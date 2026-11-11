@@ -426,6 +426,8 @@ const DT=1/60,CRUISE=120,ARCV=52,JV=88,TS=3,MPP=0.3,PREP_DIST=480,YD=380,YLAT=23
 const PH=[{d:9},{d:2},{d:1.2},{d:9},{d:2},{d:1.2}],CYC=24.4;
 const RATE={light:.10,moderate:.19,heavy:.30};
 const T_ARM=8.2,T_LAUNCH=11.5;
+const SIREN_YD=100,STUCK_MAX=3,SQUEEZE_LEN=300; // normal ambulance: once stuck STUCK_MAX sim-seconds, cars within SIREN_YD map units ahead squeeze aside
+const RED_CAUTION=1.6,CAUTION_V=40; // normal ambulance: sim-seconds waited at a red before creeping through, and crawl speed
 /* ===== EDIT THESE ===== */
 const CREDIT='Team Eleware  ·  Bit n Build Ideathon';
 const CAM_ZOOM=1.22;   // 1 = no camera follow
@@ -621,6 +623,22 @@ class Sim{
       if(s>rj.sStop+1)continue;
       const j=this.J[rj.c][rj.r],st=sigState(j,rj.axis,'amb'),d=rj.sStop-s;
       let need=st==='r'||(st==='y'&&d>a.v*a.v/(2*130)+6);
+      // Normal siren ambulance: stops at red, then creeps through once the crossing looks clear (checked below)
+      let cautious=false;
+      if(!this.system&&st==='r'&&d<14){a.redT=(a.redT||0)+(a.v<4?dt:0);if(a.redT>RED_CAUTION){need=false;cautious=true}}
+      if(cautious){
+        // only creep through if no vehicle on the other approaches is close to the junction
+        for(const def of LANES){
+          if(def.key===a.lane)continue;
+          const ct=def.centers.find(q=>q.c===rj.c&&q.r===rj.r);if(!ct)continue;
+          for(const c of this.laneMap[def.key].cars){
+            if(c.amb||(c.v<3&&c.p<=ct.p-STOP+2))continue;
+            if(c.p>ct.p-STOP-(c.v*2+50)&&c.p-c.len<ct.p+BOX+8){need=true;cautious=false;break}
+          }
+          if(need)break;
+        }
+      }
+      else if(a.v>20)a.redT=0;
       if(!need&&rj.opp&&d<80){
         const O=this.laneMap[rj.opp],cp=rj.oppCp,os=sigState(j,'NS',rj.opp);
         for(const c of O.cars){
@@ -637,13 +655,14 @@ class Sim{
         }
       }
       if(need)vd=Math.min(vd,Math.sqrt(2*110*Math.max(0,d)));
+      else if(cautious||(!this.system&&st==='r'))vd=Math.min(vd,CAUTION_V);
       break;
     }
     let near=false,gap=1e9;
     const scan=(lane,vp,back)=>{
       for(const c of this.laneMap[lane].cars){
         if(c===a.car)continue;
-        if(this.system&&c.yield&&c.lat>=9){if(c.p>vp-60&&c.p-c.len-vp<140)near=true;continue}
+        if(c.yield&&c.lat>=9){if(c.p>vp-60&&c.p-c.len-vp<140)near=true;continue}
         if(c.p<=vp-back)continue;
         const g=c.p-c.len-vp-6;if(g<gap)gap=g;
       }
@@ -658,6 +677,7 @@ class Sim{
     a.v+=clamp(vd-a.v,-130*dt,62*dt);
     if(a.v<0)a.v=0;
     a.s=Math.min(SEND,a.s+a.v*dt);a.moved+=a.v*dt;
+    if(!this.system&&a.moved>30){if(a.v<3)a.stuckT=(a.stuckT||0)+dt;else if(a.v>6)a.stuckT=0;if((a.stuckT||0)>STUCK_MAX)a.squeezeEnd=a.s+SQUEEZE_LEN}
     if(a.moved>30){
       if(a.v<3){a.waitT+=dt;if(!a.stopped){a.stopped=true;a.stops++}}else if(a.v>25)a.stopped=false;
     }
@@ -668,13 +688,25 @@ class Sim{
   cars(dt){
     const a=this.amb;
     for(const L of this.lanes)for(const c of L.cars)c.yield=false;
-    if(this.system&&this.t>=this.tArm&&a.started&&!a.done){
-      const lo=a.s-110,hi=a.s+YD;
+    // Normal ambulance: only while it is stuck do nearby drivers squeeze aside for the siren
+    const sirenAssist=!this.system&&a&&a.started&&!a.done&&a.s<(a.squeezeEnd||0);
+    if((this.system&&this.t>=this.tArm&&a.started&&!a.done)||sirenAssist){
+      const lo=a.s-(this.system?110:30),hi=a.s+(this.system?YD:SIREN_YD);
       for(const leg of PATH.legs){
         if(leg.s1<lo||leg.s0>hi)continue;
         const L=this.laneMap[leg.lane],pb=leg.p0+Math.min(hi,leg.s1)-leg.s0,pa=leg.p0+Math.max(lo,leg.s0)-leg.s0;
         const low=a.lane===leg.lane?a.car.p-60:pa;
-        for(const c of L.cars){if(!c.amb&&c.p>low&&c.p-c.len<pb){c.yield=true;this.flags.lane=1}}
+        for(const c of L.cars){if(!c.amb&&c.p>low&&c.p-c.len<pb){c.yield=true;this.flags.lane=1;if(!this.system&&a.lane===leg.lane&&c.p-c.len<a.car.p+40)a.squeezeEnd=Math.max(a.squeezeEnd||0,a.s+30)}}
+      }
+    }
+    if(sirenAssist){
+      // stuck at a junction: oncoming and crossing drivers who can still stop do so for the siren
+      const k=RJ.findIndex(r=>a.s<=r.sStop+1);
+      if(k>=0&&RJ[k].sStop-a.s<200){
+        const rj=RJ[k];
+        const mark=(key,cp)=>{for(const c of this.laneMap[key].cars){if(!c.amb&&c.p>cp-STOP-70&&c.p-c.len<cp+BOX)c.yield=true}};
+        if(rj.opp)mark(rj.opp,rj.oppCp);
+        for(const def of LANES){if(def.axis===rj.axis)continue;const ct=def.centers.find(q=>q.c===rj.c&&q.r===rj.r);if(ct)mark(def.key,ct.p)}
       }
     }
     for(const L of this.lanes){
