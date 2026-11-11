@@ -1,0 +1,1406 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AMBRIDGE Recording</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+Devanagari:wght@500;700&display=swap">
+<style>
+/* Layout: a night-shift control room. Left = what the server thinks, centre = the city, right = what the driver sees.
+   Palette: ink night map, signal colours used only for signal meaning, corridor green as the brand. */
+:root{
+  --ink:#0A111E; --surface:#101A2B; --raised:#17243A; --line:#233451; --text:#E8EEF8; --muted:#8DA1BD;
+  --go:#3DDC97; --stop:#FF5468; --wait:#FFB224; --info:#5CC8FF;
+  --f-display:'Bricolage Grotesque','Segoe UI',system-ui,sans-serif;
+  --f-body:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --f-dev:'Noto Sans Devanagari','IBM Plex Sans',sans-serif;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{margin:0;background:var(--ink);color:var(--text);font:14px/1.45 var(--f-body);overflow:hidden}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr;min-height:0}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand svg{flex:none}
+.brand h1{font:700 22px/1.1 var(--f-display);letter-spacing:-.01em}
+.brand p{color:var(--muted);font-size:12.5px}
+.simnote{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;background:var(--surface)}
+.simnote i{width:7px;height:7px;border-radius:50%;background:var(--wait);flex:none}
+.main{display:grid;grid-template-columns:minmax(290px,330px) minmax(0,1fr) minmax(270px,300px);gap:12px;padding:0 14px 14px;min-height:0}
+.col{min-height:0;min-width:0;display:flex;flex-direction:column;gap:12px;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 12px;flex:none}
+.card.grow{flex:1 1 150px;min-height:150px;display:flex;flex-direction:column}
+.card h2{font:600 13px/1.2 var(--f-body);color:var(--muted);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;font:500 12px/1 var(--f-body);padding:5px 9px;border-radius:999px;background:var(--raised);color:var(--text);border:1px solid var(--line);white-space:nowrap}
+.chip i{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.chip.go{color:var(--go);border-color:#245a46}.chip.go i{background:var(--go)}
+.chip.wait{color:var(--wait);border-color:#5b4515}.chip.wait i{background:var(--wait)}
+.chip.stop{color:var(--stop);border-color:#5e2530}.chip.stop i{background:var(--stop)}
+.chip.info{color:var(--info);border-color:#21526b}.chip.info i{background:var(--info)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.kpi{background:var(--raised);border-radius:10px;padding:8px 10px;min-width:0}
+.kpi b{display:block;font:700 20px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.kpi span{font-size:11.5px;color:var(--muted)}
+.hosp{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13.5px}
+.hosp small{color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--raised);margin-top:10px;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--go);width:0}
+.bar u{position:absolute;top:-3px;width:2px;height:12px;background:var(--line);border-radius:1px}
+.bar u.on{background:var(--go)}
+#twin{width:100%;height:auto;max-height:140px;display:block}
+#twin text{font:500 9.5px var(--f-body);fill:var(--muted)}
+.decision{margin-top:6px;font-size:12.5px;color:var(--text);min-height:34px}
+.ladder{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.ladder li{display:grid;grid-template-columns:22px 1fr auto 40px;align-items:center;gap:8px;padding:4px 8px;border-radius:9px;background:var(--raised);font-size:12.5px;border:1px solid transparent}
+.ladder li.cur{border-color:#2f4a73}
+.ladder .j{font:700 11px var(--f-display);color:var(--muted)}
+.ladder .nm small{color:var(--muted);font-size:11px;margin-left:6px}
+.ladder .eta{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px}
+.pill{font-size:11px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.pill.preparing{color:var(--wait);border-color:#5b4515;background:#2a2112}
+.pill.priority{color:#06130d;background:var(--go);border-color:var(--go);font-weight:600}
+.pill.released{color:var(--go);border-color:#245a46}
+.pill.failsafe{color:var(--stop);border-color:#5e2530}
+.log{list-style:none;margin:0;padding:0;overflow:auto;flex:1;display:flex;flex-direction:column;gap:6px;font-size:12.5px;min-height:0}
+.log li{display:grid;grid-template-columns:50px 8px 1fr;gap:8px;align-items:start}
+.log time{color:var(--muted);font-variant-numeric:tabular-nums;font-size:11.5px;padding-top:1px}
+.log i{width:8px;height:8px;border-radius:50%;margin-top:5px;background:var(--info)}
+.log i.go{background:var(--go)}.log i.wait{background:var(--wait)}.log i.stop{background:var(--stop)}
+.log li.new{animation:flash .9s}
+@keyframes flash{from{background:#1d3a5c}to{background:transparent}}
+.steps{list-style:none;margin:0;padding:0;display:flex;gap:6px;flex:none}
+.steps li{flex:1;min-width:0;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.steps li b{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:700 11px var(--f-display);background:var(--raised);color:var(--muted)}
+.steps li.active{color:var(--text);border-color:#2f4a73}
+.steps li.active b{background:var(--info);color:#04121c}
+.steps li.done{color:var(--text)}
+.steps li.done b{background:var(--go);color:#04140d}
+.stage{position:relative;flex:none;aspect-ratio:16/10;min-height:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#070d18}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+.glass{background:rgba(12,20,34,.84);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:14px}
+.start{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,calc(100% - 32px));padding:22px;text-align:left}
+.start h2{font:700 30px/1.1 var(--f-display);letter-spacing:-.02em;margin-bottom:8px}
+.start p{color:var(--muted);margin-bottom:16px;max-width:38ch}
+.btn{border:1px solid var(--line);background:var(--raised);border-radius:999px;padding:8px 14px;font-weight:500;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn:hover{border-color:#3a5683}
+.btn.primary{background:var(--go);color:#05140d;border-color:var(--go);font-weight:600;padding:10px 18px;font-size:15px}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{border-color:#5e2530;color:var(--stop)}
+.btn.on{border-color:var(--wait);color:var(--wait)}
+.btn.small{padding:6px 11px;font-size:12.5px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.dispatch{position:absolute;left:12px;top:12px;width:min(330px,calc(100% - 24px));padding:12px 14px;max-height:calc(100% - 24px);overflow:auto}
+.dispatch h3{font:600 12.5px var(--f-body);color:var(--muted);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.dlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.dlist li{animation:rise .35s both}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.dlist b{display:block;font-size:13px}
+.dlist span{display:block;color:var(--muted);font-size:12px}
+.hlist{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+.hl{display:grid;grid-template-columns:1fr auto;gap:2px 8px;padding:6px 8px;border-radius:9px;background:var(--raised);font-size:12px;border:1px solid transparent}
+.hl small{color:var(--muted);grid-column:1/3}
+.hl.pick{border-color:var(--go);background:#123325}
+.hl.pick em{color:var(--go);font-style:normal;font-weight:600}
+.hl em{color:var(--muted);font-style:normal}
+.count{position:absolute;right:12px;top:12px;padding:8px 16px;font:600 14px var(--f-body);display:flex;gap:10px;align-items:center;white-space:nowrap}
+.count b{font:700 20px var(--f-display);color:var(--go);font-variant-numeric:tabular-nums}
+.clocks{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;flex-wrap:wrap}
+.clk{padding:7px 12px;display:flex;flex-direction:column;min-width:128px}
+.clk span{font-size:11.5px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.clk span i{width:8px;height:8px;border-radius:50%}
+.clk b{font:700 22px/1.15 var(--f-display);font-variant-numeric:tabular-nums}
+.legend{position:absolute;right:12px;bottom:12px;padding:8px 12px;display:flex;flex-direction:column;gap:5px;font-size:11.5px;color:var(--muted)}
+.legend p{display:flex;align-items:center;gap:8px}
+.legend i{width:16px;height:6px;border-radius:3px;flex:none}
+.result{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100% - 28px));padding:20px 22px}
+.result h2{font:700 26px/1.1 var(--f-display);letter-spacing:-.02em;margin-bottom:4px}
+.result>p{color:var(--muted);margin-bottom:14px}
+.cmp{display:flex;flex-direction:column;gap:12px;margin-bottom:14px}
+.cmp div.r{display:grid;grid-template-columns:118px 1fr auto;gap:10px;align-items:center}
+.cmp .t{height:14px;border-radius:7px;background:var(--raised);overflow:hidden}
+.cmp .t i{display:block;height:100%;border-radius:7px;width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
+.cmp b{font:700 20px var(--f-display);font-variant-numeric:tabular-nums}
+.cmp small{display:block;color:var(--muted);font-size:11.5px}
+.saved{font:700 17px/1.3 var(--f-display);margin-bottom:12px}
+.saved em{font-style:normal;color:var(--go)}
+.controls{display:flex;gap:8px 14px;flex-wrap:wrap;align-items:center;flex:none;padding:8px 12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:7px 12px;font-size:12.5px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--raised);color:var(--text);font-weight:600}
+.seg button+button{border-left:1px solid var(--line)}
+.controls .lab{font-size:11.5px;color:var(--muted);margin-right:-6px}
+.phone{width:250px;margin:0 auto;border-radius:36px;padding:9px;background:linear-gradient(160deg,#2c3d5c,#0c1523);box-shadow:0 18px 40px rgba(0,0,0,.5),inset 0 0 0 1.5px #3b4f74;flex:none}
+.screen{border-radius:28px;background:#0b1321;display:flex;flex-direction:column;gap:8px;padding:10px 11px 12px;min-height:490px;position:relative;overflow:hidden}
+.sb{display:flex;justify-content:space-between;font:600 11px var(--f-body);color:var(--muted);padding:0 4px}
+.app-bar{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.app-bar b{font:700 17px var(--f-display)}
+.langs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.langs button{border:1px solid var(--line);background:transparent;border-radius:9px;padding:6px 4px;font:500 12.5px var(--f-dev);color:var(--muted)}
+.langs button[aria-pressed="true"]{background:var(--info);color:#04121c;border-color:var(--info);font-weight:700}
+.tohosp{font-size:11.5px;color:var(--muted);display:flex;justify-content:space-between;gap:6px}
+.man{background:var(--raised);border-radius:16px;padding:12px;display:flex;align-items:center;gap:12px}
+.man svg{width:72px;height:72px;flex:none;color:var(--text);transition:transform .45s cubic-bezier(.3,1.4,.5,1)}
+.man b{display:block;font:700 19px/1.15 var(--f-body)}
+.man span{font:700 26px/1.1 var(--f-display);color:var(--info);font-variant-numeric:tabular-nums}
+.sig{border-radius:16px;padding:12px;display:flex;align-items:center;gap:12px;border:2px solid transparent;transition:background .25s,border-color .25s}
+.sig .lamp{width:34px;height:34px;border-radius:50%;flex:none;box-shadow:0 0 22px currentColor}
+.sig b{display:block;font:700 17px/1.2 var(--f-body)}
+.sig small{color:var(--muted);font-size:11.5px}
+.sig.g{background:#0f2e22;border-color:var(--go);color:var(--go)}.sig.g .lamp{background:var(--go)}
+.sig.a{background:#33260c;border-color:var(--wait);color:var(--wait)}.sig.a .lamp{background:var(--wait)}
+.sig.r{background:#341218;border-color:var(--stop);color:var(--stop)}.sig.r .lamp{background:var(--stop)}
+.sig.n{background:var(--raised);color:var(--muted)}.sig.n .lamp{background:var(--muted);box-shadow:none}
+.sig b,.sig small{color:var(--text)}
+.sig small{color:var(--muted)}
+.pbtns{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:auto}
+.help{background:var(--stop);color:#fff;border:0;border-radius:14px;padding:13px;font:700 16px var(--f-body);display:flex;align-items:center;justify-content:center;gap:8px}
+.vox{border:1px solid var(--line);background:var(--raised);border-radius:14px;padding:0 14px;font-size:12.5px;display:flex;align-items:center;gap:6px}
+.vox[aria-pressed="true"]{border-color:var(--info);color:var(--info)}
+.banner{border-radius:10px;padding:7px 10px;font-size:12px;background:#33260c;color:var(--wait);border:1px solid #5b4515}
+.race{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px}
+.feat{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;font-size:12.5px}
+.feat li{display:flex;align-items:baseline;gap:9px;color:var(--muted)}
+.feat li i{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--line);flex:none;align-self:center}
+.feat li small{color:var(--muted);font-size:11px;margin-left:auto;text-align:right}
+.feat li.on{color:var(--text)}
+.feat li.on i{background:var(--go);border-color:var(--go);box-shadow:0 0 8px rgba(61,220,151,.6)}
+.feat li.on small{display:none}
+.lane{display:grid;grid-template-columns:1fr auto;gap:4px 8px;align-items:center;font-size:12.5px}
+.lane .tr{grid-column:1/3;height:10px;border-radius:5px;background:var(--raised);position:relative;overflow:hidden}
+.lane .tr i{position:absolute;left:0;top:0;bottom:0;border-radius:5px;width:0}
+.lane b{font:700 17px var(--f-display);font-variant-numeric:tabular-nums}
+.lane small{color:var(--muted)}
+.foot{color:var(--muted);font-size:11.5px;line-height:1.5;font-weight:400}
+@media (prefers-reduced-motion:reduce){.dlist li,.log li.new{animation:none}.man svg{transition:none}}
+</style>
+<style>
+/* ===== RECORDING MODE: fixed 1920x1080 frame, scaled to the window ===== */
+[hidden]{display:none!important}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+*{cursor:none!important}
+#frame{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;background:var(--ink);overflow:hidden}
+.app{height:1080px}
+.top{padding:16px 24px 12px;flex-wrap:nowrap}
+.brand h1{font-size:32px}.brand p{font-size:16px}
+.brand svg{width:50px;height:50px}
+.simnote{font-size:15px;padding:8px 18px}
+.main{grid-template-columns:430px minmax(0,1fr) 340px;gap:16px;padding:0 24px 22px}
+.col{overflow:hidden;gap:14px}
+.card{padding:14px 16px;border-radius:16px}
+.card h2{font-size:16px;margin-bottom:10px}
+.chip{font-size:14px;padding:6px 11px}
+.hosp{font-size:17px}.hosp small{font-size:14px}
+.kpi b{font-size:28px}.kpi span{font-size:13.5px}
+#twin{max-height:150px}#twin text{font-size:10px}
+.decision{font-size:15px;min-height:42px}
+.ladder li{font-size:15.5px;padding:6px 10px;grid-template-columns:28px 1fr auto 48px}
+.ladder .nm{white-space:nowrap;overflow:hidden}.ladder .nm small{font-size:12.5px;margin-left:5px}.stage{aspect-ratio:16/9}.ladder .j{font-size:13px}
+.pill{font-size:13px;padding:4px 10px}.ladder .eta{font-size:14.5px}
+.log{font-size:15px;gap:8px}.log time{font-size:13.5px}.log li{grid-template-columns:58px 9px 1fr}
+.steps li{font-size:15.5px;padding:10px 12px}.steps li b{width:24px;height:24px;font-size:13px}
+.dispatch{width:410px;padding:16px 18px}.dispatch h3{font-size:15px}
+.dlist b{font-size:16px}.dlist span{font-size:14.5px}
+.hl{font-size:14.5px;padding:8px 10px}
+.count{font-size:18px;padding:10px 20px}.count b{font-size:28px}
+.legend{font-size:14px;padding:10px 14px}
+.result{width:760px;padding:26px 30px}
+.result h2{font-size:34px}.result>p{font-size:17px}
+.cmp{gap:16px}.cmp div.r{grid-template-columns:170px 1fr auto;font-size:18px}.cmp b{font-size:30px}.cmp small{font-size:14px}.cmp .t{height:18px}
+.saved{font-size:24px}
+.result .row{display:none}
+.lane{font-size:16px}.lane b{font-size:24px}.lane small{font-size:14px}
+.foot{font-size:14px}
+.phone{zoom:1.18}
+.pbtns{grid-template-columns:1fr}.vox{display:none}
+.feat{font-size:15.5px;gap:9px}.feat li small{display:none}
+#controls,#startCard{display:none!important}
+/* caption strip (the story, in words) */
+.cap{flex:1 1 auto;min-height:74px;display:flex;align-items:center;gap:18px;padding:0 26px;border-radius:16px;border:1px solid var(--line);background:linear-gradient(90deg,#0f2a22,#101A2B 55%);position:relative;overflow:hidden}
+.cap:before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--go)}
+.cap span{font:600 29px/1.2 var(--f-display);letter-spacing:-.01em;opacity:0}
+.cap span.in{animation:capin .45s forwards}
+@keyframes capin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* overlays */
+.ov{position:absolute;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;text-align:center;transition:opacity .6s}
+.ov.fade{opacity:0;pointer-events:none}
+.ov .inner{max-width:1200px;padding:0 40px}
+.ov h1{font:700 120px/1 var(--f-display);letter-spacing:-.03em;margin-bottom:22px}
+.ov h1 em{font-style:normal;color:var(--go)}
+.ov p{font:500 36px/1.35 var(--f-body);color:var(--muted)}
+.ov .tag{display:inline-block;margin-top:34px;font:600 20px var(--f-body);color:var(--text);border:1px solid var(--line);border-radius:999px;padding:10px 24px;background:var(--surface)}
+#takeCard{background:rgba(7,13,24,.86)}
+#takeCard h2{font:700 64px/1.1 var(--f-display);margin-bottom:18px}
+#takeCard p{font-size:30px}
+#takeCard kbd{font:700 28px var(--f-body);background:var(--go);color:#05140d;border-radius:12px;padding:6px 20px;margin:0 6px}
+#takeCard small{display:block;margin-top:26px;font:400 20px var(--f-body);color:var(--muted)}
+#titleCard,#endCard{background:radial-gradient(1200px 700px at 50% 45%,#10304a 0%,#0A111E 70%)}
+#endCard .big{font:700 56px/1.15 var(--f-display);margin:8px 0 0}
+#endCard .big em{font-style:normal;color:var(--go)}
+#takeCard,#titleCard,#endCard{display:flex}
+#takeCard[hidden],#titleCard[hidden],#endCard[hidden]{display:none!important}
+
+/* ===== AMBRIDGE identity: graphite control room, warm paper type, hairlines instead of glossy cards ===== */
+:root{--ink:#0B0E13;--surface:#11151C;--raised:#181E27;--line:#29313C;--text:#EFEBE2;--muted:#99A2AE;--brand:#FF5A3C;
+  --f-display:'Barlow Condensed','Arial Narrow',sans-serif;--f-mono:'IBM Plex Mono',ui-monospace,monospace}
+#frame{background:var(--ink)}
+.card,.glass,.cap,.simnote,.steps li,.kpi,.hl,.ladder li,.phone .banner{border-radius:5px}
+.card{background:var(--surface)}
+.card h2{font:600 13px var(--f-body);text-transform:uppercase;letter-spacing:.14em;color:var(--muted)}
+.chip,.pill{border-radius:4px;font-family:var(--f-mono);font-size:12.5px;letter-spacing:.02em}
+.brand h1{font:700 38px/1 var(--f-display);letter-spacing:.12em;text-transform:uppercase}
+.brand h1 em{font-style:normal;color:var(--brand)}
+.brand p{letter-spacing:.02em}
+.kpi b,.lane b,.cmp b,.count b,.man span,.ladder .eta,.log time,.clk b{font-family:var(--f-mono);font-weight:600}
+.kpi b{font-size:30px}
+.steps li{text-transform:uppercase;letter-spacing:.08em;font-size:13.5px;font-weight:600}
+.steps li b{border-radius:3px;font-family:var(--f-mono)}
+.cap{background:linear-gradient(90deg,#22140f,var(--surface) 60%)}
+.cap:before{background:var(--brand);width:6px}
+.cap span{font:600 32px/1.15 var(--f-display);letter-spacing:.01em}
+.ov h1{font:700 190px/.9 var(--f-display);letter-spacing:.14em;text-transform:uppercase;margin-right:-.14em}
+.ov h1 em{color:var(--brand)}
+.ov p{font:500 34px/1.4 var(--f-body);color:#b9c0ca}
+.ov .tag{border-radius:3px;letter-spacing:.16em;text-transform:uppercase;font-size:17px;background:transparent;border-color:#3a4452}
+#titleCard,#endCard{background:radial-gradient(1100px 620px at 50% 48%,#1b1612 0%,#0B0E13 72%)}
+#titleCard svg.arc{display:block;margin:0 auto 38px;width:760px;height:120px;overflow:visible}
+#titleCard .arcline{stroke-dasharray:900;stroke-dashoffset:900;animation:draw 2.4s .3s cubic-bezier(.5,0,.2,1) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+#endCard .big{font:700 64px/1.1 var(--f-display);letter-spacing:.04em;text-transform:uppercase}
+#endCard .big em{color:var(--go)}
+#takeCard h2{font:700 72px var(--f-display);letter-spacing:.08em;text-transform:uppercase}
+#takeCard kbd{border-radius:4px;background:var(--brand);color:#fff}
+.result h2{font:700 40px var(--f-display);letter-spacing:.03em;text-transform:uppercase}
+.result{border-radius:6px}
+</style>
+</head><body>
+
+
+<div id="frame"><div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden="true"><rect width="40" height="40" rx="11" fill="#17243A"/><path d="M6 29 C14 29 14 11 22 11 S30 29 34 29" fill="none" stroke="#FF5A3C" stroke-width="3.5" stroke-linecap="round"/><rect x="16.5" y="14" width="9" height="9" rx="2" fill="#fff"/><path d="M21 15.4v6.2M17.9 18.5h6.2" stroke="#FF5468" stroke-width="2"/></svg>
+      <div><h1>AM<em>BRIDGE</em></h1><p>Intelligent ambulance traffic coordination · Team Eleware</p></div>
+    </div>
+    <div class="simnote"><i></i>Simulation with illustrative traffic. One second on screen equals three seconds in the city.</div>
+  </header>
+
+  <div class="main">
+    <section class="col col-left" aria-label="Control room">
+      <article class="card" id="tripCard">
+        <h2>Trip <span class="chip" id="tripChip"><i></i>Waiting</span></h2>
+        <div class="hosp"><b id="hospName">Lotus Heart Institute</b><small>AI triage pick</small></div>
+        <div class="kpis">
+          <div class="kpi"><b id="kSpeed">0</b><span>km/h</span></div>
+          <div class="kpi"><b id="kEta">0:00</b><span>ETA</span></div>
+          <div class="kpi"><b id="kPass">0/6</b><span>Junctions passed</span></div>
+        </div>
+      </article>
+      <article class="card" id="twinCard">
+        <h2><span id="twinTitle">Next junction</span><span class="chip" id="twinChip"><i></i>Standby</span></h2>
+        <svg id="twin" viewBox="0 0 200 200" role="img" aria-label="Live traffic and signals at the next junction"></svg>
+        <p class="decision" id="decision"></p>
+      </article>
+      <article class="card">
+        <h2>Corridor, six signals</h2>
+        <ul class="ladder" id="ladder"></ul>
+      </article>
+      <article class="card grow">
+        <h2>System messages</h2>
+        <ul class="log" id="log"></ul>
+      </article>
+    </section>
+
+    <section class="col col-mid" aria-label="City simulation">
+      <ol class="steps" id="steps">
+        <li data-k="call"><b>1</b><span>Emergency call</span></li>
+        <li data-k="triage"><b>2</b><span>AI triage</span></li>
+        <li data-k="route"><b>3</b><span>Route and ETAs</span></li>
+        <li data-k="corridor"><b>4</b><span>Corridor active</span></li>
+        <li data-k="arrive"><b>5</b><span>Arrived</span></li>
+      </ol>
+      <div class="stage" id="stage">
+        <canvas id="cv" aria-label="Top-down animated city with an ambulance crossing six signals"></canvas>
+        <div class="glass start" id="startCard">
+          <h2>Six signals. One ambulance.</h2>
+          <p>Watch the same ambulance, in the same traffic, with and without the corridor.</p>
+          <div class="row"><button class="btn primary" id="btnStart">Start emergency call</button><button class="btn" id="btnSkip">Skip intro</button></div>
+        </div>
+        <div class="glass dispatch floating" id="dispatch" hidden>
+          <h3>Dispatch console <span class="chip info"><i></i>Demo data</span></h3>
+          <ul class="dlist" id="dlist"></ul>
+        </div>
+        <div class="glass count" id="count" hidden>Ambulance departs in <b id="countN">6</b> s</div>
+        <div class="glass legend" id="legend" hidden>
+          <p><i style="background:var(--wait)"></i>Lane opens for the ambulance</p>
+          <p><i style="background:var(--go)"></i>Green held, junction cleared</p>
+        </div>
+        <div class="glass result" id="result" hidden>
+          <h2>Ambulance at the hospital</h2>
+          <p>Same traffic, same route, same start. Only the corridor differs.</p>
+          <div class="cmp">
+            <div class="r"><div>AMBRIDGE<small id="rsA"></small></div><div class="t"><i id="rbA" style="background:var(--go)"></i></div><b id="rtA"></b></div>
+            <div class="r"><div>Normal ambulance<small id="rsB"></small></div><div class="t"><i id="rbB" style="background:#9fb0c7"></i></div><b id="rtB"></b></div>
+          </div>
+          <p class="saved" id="saved"></p>
+          <div class="row"><button class="btn primary" id="btnAgain">Run again</button><button class="btn" id="btnHeavy">Try heavy traffic</button></div>
+        </div>
+      </div>
+      <article class="card">
+        <h2>Time to the hospital <span class="foot">Normal ambulance: same traffic, same route, no AMBRIDGE</span></h2>
+        <div class="race">
+          <div class="lane"><span>AMBRIDGE</span><b id="rA" style="color:var(--go)">0:00</b><div class="tr"><i id="rpA" style="background:var(--go)"></i></div><small id="rsa">0 stops</small></div>
+          <div class="lane"><span>Normal ambulance</span><b id="rB" style="color:#c3cfdf">0:00</b><div class="tr"><i id="rpB" style="background:#9fb0c7"></i></div><small id="rsb">0 stops</small></div>
+        </div>
+      </article>
+      <div class="cap" id="cap"><span id="capT"></span></div>
+      <div class="glass controls" id="controls">
+        <button class="btn small" id="btnPlay" aria-label="Pause or resume">Pause</button>
+        <span class="lab">Speed</span>
+        <div class="seg" id="segSpeed"><button data-v="1" aria-pressed="true">1×</button><button data-v="2" aria-pressed="false">2×</button><button data-v="4" aria-pressed="false">4×</button></div>
+        <span class="lab">View</span>
+        <div class="seg" id="segView"><button data-v="corridor" aria-pressed="true">AMBRIDGE</button><button data-v="siren" aria-pressed="false">Normal ambulance</button></div>
+        <span class="lab">Traffic</span>
+        <div class="seg" id="segTraffic"><button data-v="light" aria-pressed="false">Light</button><button data-v="moderate" aria-pressed="true">Moderate</button><button data-v="heavy" aria-pressed="false">Heavy</button></div>
+        <button class="btn small" id="btnNet">Lose internet</button>
+        <button class="btn small" id="btnOff">Off-route alert</button>
+        <button class="btn small" id="btnSnd" aria-pressed="false">Siren sound: off</button>
+        <button class="btn small" id="btnRestart">Restart</button>
+      </div>
+    </section>
+
+    <section class="col col-right" aria-label="Driver app and comparison">
+      <div class="phone"><div class="screen" id="screen">
+        <div class="sb"><span id="phClock">19:42</span><span>Ambulance 07</span><span id="phNet">5G</span></div>
+        <div class="app-bar"><b id="phTitle">Emergency trip</b></div>
+        <div class="langs" id="langs"><button data-l="en" aria-pressed="true">EN</button><button data-l="mr" aria-pressed="false">मराठी</button><button data-l="hi" aria-pressed="false">हिंदी</button></div>
+        <div class="tohosp"><span id="phHosp">Lotus Heart Institute</span><span id="phLeft"></span></div>
+        <div class="banner" id="phBanner" hidden></div>
+        <div class="man"><svg id="arrow" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 6 L84 44 H63 V94 H37 V44 H16 Z" fill="currentColor"/></svg>
+          <div><b id="manText">Go straight</b><span id="manDist">0 m</span></div></div>
+        <div class="sig n" id="sig"><div class="lamp"></div><div><b id="sigText">Next signal</b><small id="sigSub"></small></div></div>
+        <div class="pbtns"><button class="help" id="btnHelp">Call help</button><button class="vox" id="btnVox" aria-pressed="true">Voice</button></div>
+      </div></div>
+      <article class="card">
+        <h2>Features shown <span class="chip" id="featN"><i></i>0/6</span></h2>
+        <ul class="feat" id="feat">
+          <li data-f="route"><i></i>Route-aware preparation</li>
+          <li data-f="assessed"><i></i>Traffic assessed in four directions</li>
+          <li data-f="hold"><i></i>Oncoming right-turn lane held</li>
+          <li data-f="lane"><i></i>Lane opened for the ambulance</li>
+          <li data-f="release"><i></i>Green held, then released</li>
+          <li data-f="lang"><i></i>Driver app in three languages</li>
+        </ul>
+      </article>
+    </section>
+  </div>
+</div>
+
+<div class="ov" id="titleCard" hidden><div class="inner">
+  <svg class="arc" viewBox="0 0 760 120" aria-hidden="true"><path class="arcline" d="M10 108 C 200 108, 240 8, 380 8 S 560 108, 750 108" fill="none" stroke="#FF5A3C" stroke-width="6" stroke-linecap="round"/><circle cx="10" cy="108" r="11" fill="#EFEBE2"/><circle cx="750" cy="108" r="11" fill="#3DDC97"/></svg>
+  <h1>AM<em>BRIDGE</em></h1>
+  <p>Every red light costs an ambulance seconds.<br>What if the city cleared the road before it arrived?</p>
+  <span class="tag">Intelligent ambulance traffic coordination</span>
+</div></div>
+<div class="ov" id="endCard" hidden><div class="inner">
+  <h1>AM<em>BRIDGE</em></h1>
+  <p class="big" id="endLine">Six signals. One ambulance. <em>Seconds saved.</em></p>
+  <span class="tag" id="endCredit">CREDIT</span>
+</div></div>
+<div class="ov" id="takeCard"><div class="inner">
+  <h2>Ready to record</h2>
+  <p>Start your screen recorder, then press <kbd>Enter</kbd></p>
+  <small>F fullscreen · R reset · L loop on or off · the cursor is hidden · no sound is played</small>
+</div></div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+/* ───────── constants and helpers ───────── */
+const WW=1600,WH=900,VX=[200,600,1000,1400],HY=[220,470,720],LO=22,BOX=44,STOP=66;
+const DT=1/60,CRUISE=120,ARCV=52,JV=88,TS=3,MPP=0.3,PREP_DIST=480,YD=380,YLAT=23;
+const PH=[{d:9},{d:2},{d:1.2},{d:9},{d:2},{d:1.2}],CYC=24.4;
+const RATE={light:.10,moderate:.19,heavy:.30};
+const T_ARM=8.2,T_LAUNCH=11.5;
+/* ===== EDIT THESE ===== */
+const CREDIT='Team Eleware  ·  Bit n Build Ideathon';
+const CAM_ZOOM=1.22;   // 1 = no camera follow
+/* ===================== */
+const QS=new URLSearchParams(location.search);
+let K=1;
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const fmt=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+const clockStr=t=>{const s=Math.floor(19*3600+42*60+t*TS);return String(Math.floor(s/3600)%24).padStart(2,'0')+':'+String(Math.floor(s/60)%60).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+
+/* ───────── lanes (traffic keeps left, as in India) ───────── */
+const LANES=[],LANE={};
+function addLane(type,idx){
+  const d={key:type+idx,type,idx,axis:(type==='E'||type==='W')?'EW':'NS'};
+  if(type==='E'){d.fix=HY[idx]-LO;d.len=WW+160;d.th=0;d.centers=VX.map((x,c)=>({p:x+80,c,r:idx}))}
+  if(type==='W'){d.fix=HY[idx]+LO;d.len=WW+160;d.th=Math.PI;d.centers=VX.map((x,c)=>({p:WW+80-x,c,r:idx})).sort((a,b)=>a.p-b.p)}
+  if(type==='N'){d.fix=VX[idx]-LO;d.len=WH+160;d.th=-Math.PI/2;d.centers=HY.map((y,r)=>({p:WH+80-y,c:idx,r})).sort((a,b)=>a.p-b.p)}
+  if(type==='S'){d.fix=VX[idx]+LO;d.len=WH+160;d.th=Math.PI/2;d.centers=HY.map((y,r)=>({p:y+80,c:idx,r}))}
+  LANES.push(d);LANE[d.key]=d;
+}
+[0,1,2].forEach(r=>{addLane('E',r);addLane('W',r)});
+[0,1,2,3].forEach(c=>{addLane('N',c);addLane('S',c)});
+function lanePoint(L,p){switch(L.type){case'E':return{x:-80+p,y:L.fix};case'W':return{x:WW+80-p,y:L.fix};case'N':return{x:L.fix,y:WH+80-p};default:return{x:L.fix,y:-80+p}}}
+function sigState(j,axis,key){
+  if(j.hold&&j.hold===key)return'r';
+  const ph=j.phase;
+  if(axis==='NS')return ph===0?'g':ph===1?'y':'r';
+  return ph===3?'g':ph===4?'y':'r';
+}
+
+/* ───────── ambulance route as one smooth path ───────── */
+const PATH=(()=>{
+  const defs=[['N0',120,216],['E2',324,1036],['N2',304,466],['E1',1124,1436],['N3',554,852]];
+  const raw=[],legs=[],arcs=[];let cum=0;
+  const add=(x,y)=>{if(raw.length){const a=raw[raw.length-1];cum+=Math.hypot(x-a.x,y-a.y)}raw.push({x,y,s:cum})};
+  defs.forEach((d,i)=>{
+    const L=LANE[d[0]],first=raw.length;
+    for(let p=d[1];p<=d[2];p++){const q=lanePoint(L,p);add(q.x,q.y)}
+    legs.push({lane:d[0],p0:d[1],p1:d[2],s0:raw[first].s,s1:raw[raw.length-1].s});
+    if(i<defs.length-1){
+      const A=lanePoint(L,d[2]),L2=LANE[defs[i+1][0]],B=lanePoint(L2,defs[i+1][1]);
+      const vert=(L.type==='N'||L.type==='S'),C=vert?{x:A.x,y:B.y}:{x:B.x,y:A.y};
+      const s0=cum;
+      for(let k=1;k<=40;k++){const t=k/40,u=1-t;add(u*u*A.x+2*u*t*C.x+t*t*B.x,u*u*A.y+2*u*t*C.y+t*t*B.y)}
+      arcs.push({s0,s1:cum,dir:i%2===0?'right':'left'});
+    }
+  });
+  const total=cum,STEP=2,n=Math.floor(total/STEP)+2,X=new Float32Array(n+1),Y=new Float32Array(n+1);
+  let j=0;
+  for(let k=0;k<=n;k++){const s=Math.min(k*STEP,total);while(j<raw.length-2&&raw[j+1].s<s)j++;const a=raw[j],b=raw[j+1],d=b.s-a.s,f=d>0?(s-a.s)/d:0;X[k]=a.x+(b.x-a.x)*f;Y[k]=a.y+(b.y-a.y)*f}
+  return{legs,arcs,total,X,Y,STEP,n};
+})();
+const SEND=PATH.total;
+function poseAt(s){
+  const P=PATH,f0=clamp(s,0,P.total)/P.STEP,i=Math.floor(f0),f=f0-i,i1=Math.min(i+1,P.n);
+  const x=P.X[i]+(P.X[i1]-P.X[i])*f,y=P.Y[i]+(P.Y[i1]-P.Y[i])*f;
+  const a=Math.max(0,i-1),b=Math.min(P.n,i+3);
+  return{x,y,th:Math.atan2(P.Y[b]-P.Y[a],P.X[b]-P.X[a])};
+}
+function legAt(s){const L=PATH.legs;for(let i=0;i<L.length;i++)if(s>=L[i].s0-.001&&s<=L[i].s1+.001)return i;return-1}
+const RJ=[
+  {name:'Station Chowk',c:0,r:2,axis:'NS',kind:'turn',li:0,opp:'S0',turn:'right'},
+  {name:'Market Road',c:1,r:2,axis:'EW',kind:'straight',li:1,cp:VX[1]+80},
+  {name:'Temple Chowk',c:2,r:2,axis:'EW',kind:'turn',li:1,opp:null,turn:'left'},
+  {name:'Mill Circle',c:2,r:1,axis:'NS',kind:'turn',li:2,opp:'S2',turn:'right'},
+  {name:'Court Chowk',c:3,r:1,axis:'EW',kind:'turn',li:3,opp:null,turn:'left'},
+  {name:'Hospital Gate',c:3,r:0,axis:'NS',kind:'straight',li:4,cp:WH+80-HY[0]}
+];
+RJ.forEach(rj=>{
+  const leg=PATH.legs[rj.li];
+  if(rj.kind==='turn'){const a=PATH.arcs[rj.li];rj.sStop=leg.s1-(STOP-BOX);rj.sCenter=(a.s0+a.s1)/2;rj.sPast=a.s1+30}
+  else{rj.sStop=leg.s0+(rj.cp-STOP-leg.p0);rj.sCenter=leg.s0+(rj.cp-leg.p0);rj.sPast=rj.sCenter+BOX+40}
+  if(rj.opp)rj.oppCp=LANE[rj.opp].centers.find(q=>q.c===rj.c&&q.r===rj.r).p;
+  rj.x=VX[rj.c];rj.y=HY[rj.r];
+});
+
+/* ───────── vehicles ───────── */
+function inBox(c){const D=LANE[c.lane];if(!D)return false;return D.centers.some(ct=>c.p>ct.p-STOP+20&&c.p-c.len<ct.p+BOX+60)}
+const VT={car:{len:36,w:17,v:[55,88],pr:.46},auto:{len:26,w:16,v:[46,72],pr:.18},bike:{len:17,w:7,v:[62,100],pr:.24},bus:{len:66,w:21,v:[40,60],pr:.06},truck:{len:54,w:20,v:[38,58],pr:.06}};
+const CAR_COL=['#cfd8e6','#8fa6c4','#e8edf5','#4a669a','#b84a54','#6b7c99','#d9a441','#33466a','#7aa58d'];
+let CID=0;
+
+/* ───────── the simulation ───────── */
+class Sim{
+  constructor(system,density,seed){
+    this.system=system;this.rate=RATE[density];this.t=0;this.events=[];this.tArm=Infinity;this.tLaunch=Infinity;
+    this.offline=false;this.pause=0;this.flags={};this.J=[];
+    for(let c=0;c<4;c++){this.J[c]=[];for(let r=0;r<3;r++){
+      let o=(c*6.1+r*9.3)%CYC,ph=0;while(o>=PH[ph].d){o-=PH[ph].d;ph=(ph+1)%6}
+      this.J[c][r]={c,r,phase:ph,t:o,mode:'normal',axis:null,hold:null,status:'standby',failT:0};
+    }}
+    this.lanes=LANES.map((def,i)=>{const L={def,cars:[],rng:mulberry32(seed*977+i*7919+13),next:null};this.schedule(L,0);return L});
+    this.laneMap={};this.lanes.forEach(L=>this.laneMap[L.def.key]=L);
+    this.amb=null;
+    for(let i=0;i<1800;i++)this.step(DT);
+    this.t=0;this.events.length=0;
+    const n0=this.laneMap.N0;n0.cars=n0.cars.filter(c=>Math.abs(c.p-120)>90);
+    const car={amb:true,len:44,w:19,p:120,v:0,lat:0,yield:false,lane:'N0'};
+    n0.cars.push(car);
+    this.amb={s:0,v:0,lat:0,car,lane:'N0',started:false,done:false,tStart:0,tDone:0,stops:0,waitT:0,stopped:false,moved:0};
+  }
+  ev(kind,msg){this.events.push({t:this.t,kind,msg})}
+  schedule(L,tn){
+    const rng=L.rng,u=rng(),gap=Math.max(1.2,-Math.log(1-u)/this.rate),r=rng();
+    let acc=0,type='car';for(const k in VT){acc+=VT[k].pr;if(r<=acc){type=k;break}}
+    const v=VT[type].v;
+    L.next={t:tn+gap,type,vmax:v[0]+rng()*(v[1]-v[0]),col:CAR_COL[Math.floor(rng()*CAR_COL.length)],col2:CAR_COL[Math.floor(rng()*CAR_COL.length)]};
+  }
+  step(dt){this.t+=dt;this.signals(dt);this.corridor(dt);this.updateAmb(dt);this.cars(dt)}
+  signals(dt){
+    for(let c=0;c<4;c++)for(let r=0;r<3;r++){
+      const j=this.J[c][r];
+      if(j.mode==='priority'){
+        const tg=j.axis==='NS'?0:3,og=tg===0?3:0;
+        if(j.phase===og){j.phase=og+1;j.t=0}
+        else if(j.phase===tg){if(j.status==='preparing'){j.status='priority';this.ev('go','Priority granted at '+RJ.find(q=>q.c===c&&q.r===r).name+'. Green held for the ambulance.')}}
+        else this.adv(j,dt);
+      }else this.adv(j,dt);
+    }
+  }
+  adv(j,dt){j.t+=dt;if(j.t>=PH[j.phase].d){j.t-=PH[j.phase].d;j.phase=(j.phase+1)%6}}
+  level(n){return n<=1?'Low':n<=3?'Medium':'High'}
+  approach(c,r){
+    const out={};
+    [['W','E'+r,'EW'],['E','W'+r,'EW'],['S','N'+c,'NS'],['N','S'+c,'NS']].forEach(([dir,key,axis])=>{
+      const L=this.laneMap[key],cp=L.def.centers.find(q=>q.c===c&&q.r===r).p;
+      let n=0;for(const k of L.cars){if(!k.amb&&k.p>cp-290&&k.p<cp-STOP+14)n++}
+      out[dir]={n,level:this.level(n),state:sigState(this.J[c][r],axis,key)};
+    });
+    return out;
+  }
+  prep(k){
+    const rj=RJ[k],j=this.J[rj.c][rj.r],a=this.approach(rj.c,rj.r);
+    j.mode='priority';j.axis=rj.axis;j.hold=rj.opp;j.status='preparing';j.failT=0;this.flags.route=1;this.flags.assessed=1;if(rj.opp)this.flags.hold=1;
+    this.ev('info','Traffic assessed at '+rj.name+': N '+a.N.level+', E '+a.E.level+', S '+a.S.level+', W '+a.W.level+'.');
+    if(rj.opp)this.ev('wait','Oncoming lane held at '+rj.name+' to protect the right turn.');
+  }
+  release(k,status,msg){
+    const rj=RJ[k],j=this.J[rj.c][rj.r];
+    j.mode='normal';j.hold=null;j.status=status;j.failT=0;
+    if(status==='released')this.flags.release=1;if(status==='failsafe')this.flags.failsafe=1;
+    if(msg)this.ev(status==='failsafe'?'stop':'go',msg);
+    if(j.phase===(rj.axis==='NS'?0:3))j.t=Math.max(j.t,3);
+  }
+  corridor(dt){
+    if(!this.system||this.t<this.tArm)return;
+    const a=this.amb;
+    if(!this.armEv){this.armEv=true;this.ev('info','Ambulance detected. Route identified: 6 signals ahead.');this.ev('info','Corridor armed. ETAs calculated for every signal.')}
+    if(this.pause>0)this.pause-=dt;
+    for(let k=0;k<6;k++){
+      const rj=RJ[k],j=this.J[rj.c][rj.r];
+      if(a.s>rj.sPast){if(j.status==='preparing'||j.status==='priority'||j.status==='failsafe')this.release(k,'released','Priority released at '+rj.name+'. Normal cycle resumes.');continue}
+      if(this.offline){
+        if(j.status==='preparing'||j.status==='priority'){j.failT+=dt;if(j.failT>3)this.release(k,'failsafe','Connection lost. '+rj.name+' returned to its normal cycle (fail-safe).')}
+        continue;
+      }
+      if(j.status==='failsafe')j.status='standby';
+      if(j.status==='standby'&&this.pause<=0){
+        if(rj.sStop-a.s<=PREP_DIST)this.prep(k);
+      }
+    }
+  }
+  reroute(){
+    if(!this.system)return;
+    for(let k=0;k<6;k++){const rj=RJ[k],j=this.J[rj.c][rj.r];if(j.status==='preparing'||j.status==='priority')this.release(k,'standby',null)}
+    this.pause=2.5;this.flags.reroute=1;this.ev('wait','Off-route alert: 60 m away on 3 GPS fixes. New route fetched, priorities recalculated.');
+  }
+  placeAmb(key,p){
+    const a=this.amb;
+    if(a.lane!==key){
+      if(a.lane){const arr=this.laneMap[a.lane].cars,i=arr.indexOf(a.car);if(i>=0)arr.splice(i,1)}
+      if(key)this.laneMap[key].cars.push(a.car);
+      a.lane=key;
+    }
+    if(key){a.car.p=p;a.car.lane=key}
+  }
+  updateAmb(dt){
+    const a=this.amb;
+    if(!a)return;
+    if(a.done){a.lat+=clamp(28-a.lat,-20*dt,20*dt);return}
+    if(this.t<this.tLaunch){a.v=0;return}
+    if(!a.started){a.started=true;a.tStart=this.t}
+    const s=a.s;
+    // desired speed from the road ahead
+    let vd=CRUISE;
+    for(const ar of PATH.arcs){if(s<ar.s0)vd=Math.min(vd,Math.sqrt(ARCV*ARCV+2*110*(ar.s0-s)));else if(s<=ar.s1)vd=Math.min(vd,ARCV)}
+    vd=Math.min(vd,Math.sqrt(2*110*Math.max(0,SEND-s)));
+    for(let k=0;k<6;k++){const rj=RJ[k];if(s<rj.sPast){if(rj.kind==='straight'){vd=Math.min(vd,Math.sqrt(JV*JV+2*80*Math.max(0,rj.sStop-s)))}break}}
+    for(let k=0;k<6;k++){
+      const rj=RJ[k];
+      if(s>rj.sStop+1)continue;
+      const j=this.J[rj.c][rj.r],st=sigState(j,rj.axis,'amb'),d=rj.sStop-s;
+      let need=st==='r'||(st==='y'&&d>a.v*a.v/(2*130)+6);
+      if(!need&&rj.opp&&d<80){
+        const O=this.laneMap[rj.opp],cp=rj.oppCp,os=sigState(j,'NS',rj.opp);
+        for(const c of O.cars){
+          if(c.amb)continue;
+          if((c.p>cp-STOP+2&&c.p-c.len<cp+BOX)||(c.p>cp-STOP-(c.v*2.2+24)&&c.p<=cp-STOP+2&&c.v>5&&os!=='r')){need=true;break}
+        }
+      }
+      if(!need&&!this.system&&d<150){
+        for(const def of LANES){
+          if(def.axis===rj.axis)continue;
+          const ct=def.centers.find(q=>q.c===rj.c&&q.r===rj.r);if(!ct)continue;
+          for(const c of this.laneMap[def.key].cars){if(c.amb||c.v<6)continue;if(c.p>ct.p-BOX-8&&c.p-c.len<ct.p+BOX+8){need=true;break}}
+          if(need)break;
+        }
+      }
+      if(need)vd=Math.min(vd,Math.sqrt(2*110*Math.max(0,d)));
+      break;
+    }
+    let near=false,gap=1e9;
+    const scan=(lane,vp,back)=>{
+      for(const c of this.laneMap[lane].cars){
+        if(c===a.car)continue;
+        if(this.system&&c.yield&&c.lat>=9){if(c.p>vp-60&&c.p-c.len-vp<140)near=true;continue}
+        if(c.p<=vp-back)continue;
+        const g=c.p-c.len-vp-6;if(g<gap)gap=g;
+      }
+    };
+    if(a.lane)scan(a.lane,a.car.p,0);
+    const nl=PATH.legs.find(l=>l.s0>a.s&&l.lane!==a.lane);
+    if(!this.system&&nl&&nl.s0-a.s<200&&(a.blk||0)<4)scan(nl.lane,nl.p0+(a.s-nl.s0),70);
+    if(!a.lane){const pl=PATH.legs.filter(l=>l.s1<=a.s).pop();if(pl)scan(pl.lane,pl.p0+(a.s-pl.s0),0)}
+    if(gap<1e8)vd=Math.min(vd,Math.sqrt(2*110*Math.max(0,gap)));
+    if(!this.system&&a.v<3&&gap<30)a.blk=(a.blk||0)+dt;else if(a.v>20)a.blk=0;
+    a.lat+=clamp((near?-4:0)-a.lat,-14*dt,14*dt);
+    a.v+=clamp(vd-a.v,-130*dt,62*dt);
+    if(a.v<0)a.v=0;
+    a.s=Math.min(SEND,a.s+a.v*dt);a.moved+=a.v*dt;
+    if(a.moved>30){
+      if(a.v<3){a.waitT+=dt;if(!a.stopped){a.stopped=true;a.stops++}}else if(a.v>25)a.stopped=false;
+    }
+    const li=legAt(a.s);
+    if(li>=0){const leg=PATH.legs[li];this.placeAmb(leg.lane,leg.p0+(a.s-leg.s0))}else this.placeAmb(null,0);
+    if(a.s>=SEND-2.5){a.done=true;a.tDone=this.t-a.tStart;a.v=0;this.placeAmb(null,0);this.ev('go','Ambulance reached the hospital in '+fmt(a.tDone*TS)+'.')}
+  }
+  cars(dt){
+    const a=this.amb;
+    for(const L of this.lanes)for(const c of L.cars)c.yield=false;
+    if(this.system&&this.t>=this.tArm&&a.started&&!a.done){
+      const lo=a.s-110,hi=a.s+YD;
+      for(const leg of PATH.legs){
+        if(leg.s1<lo||leg.s0>hi)continue;
+        const L=this.laneMap[leg.lane],pb=leg.p0+Math.min(hi,leg.s1)-leg.s0,pa=leg.p0+Math.max(lo,leg.s0)-leg.s0;
+        const low=a.lane===leg.lane?a.car.p-60:pa;
+        for(const c of L.cars){if(!c.amb&&c.p>low&&c.p-c.len<pb){c.yield=true;this.flags.lane=1}}
+      }
+    }
+    for(const L of this.lanes){
+      const arr=L.cars,def=L.def;
+      arr.sort((x,y)=>y.p-x.p);
+      // spawn
+      if(this.t>=L.next.t){
+        const n=L.next,vt=VT[n.type];let ok=true;
+        for(const c of arr){if(c.p-c.len<vt.len+14){ok=false;break}}
+        if(ok){arr.push({lane:def.key,p:vt.len,v:Math.min(n.vmax,40),len:vt.len,w:vt.w,type:n.type,vmax:n.vmax,col:n.col,col2:n.col2,lat:0,yield:false,brake:false,amb:false,id:CID++});this.schedule(L,this.t)}
+      }
+      for(let i=0;i<arr.length;i++){
+        const c=arr[i];if(c.amb)continue;
+        let gap=1e9;
+        if(i>0){const l=arr[i-1];gap=l.p-l.len-c.p-7}
+        for(const ct of def.centers){
+          const sl=ct.p-STOP;
+          if(c.p<=sl+.5){
+            const st=sigState(this.J[ct.c][ct.r],def.axis,def.key),d=sl-c.p;
+            if(st==='r'||(st==='y'&&d>c.v*c.v/(2*150)+4))gap=Math.min(gap,d);
+            break;
+          }
+        }
+        let vdes=Math.min(c.vmax,Math.sqrt(2*95*Math.max(0,gap)));
+        if(c.yield&&!inBox(c))vdes=0;
+        const dv=vdes-c.v;
+        c.brake=dv<-3;
+        c.v+=clamp(dv,-(c.yield?260:200)*dt,70*dt);
+        if(c.v<0)c.v=0;
+        c.p+=c.v*dt;
+        c.lat+=clamp((c.yield?YLAT:0)-c.lat,-45*dt,45*dt);
+      }
+      while(arr.length&&arr[0].p>def.len+70)arr.shift();
+      // arr sorted descending, oldest at front; remove far-out cars
+      for(let i=arr.length-1;i>=0;i--)if(arr[i].p>def.len+70&&!arr[i].amb)arr.splice(i,1);
+    }
+  }
+}
+
+/* ───────── drawing ───────── */
+const cv=$('#cv'),ctx=cv.getContext('2d'),stage=$('#stage');
+let VW=1,VH=1,DPR=1,SC=1,OX=0,OY=0,STATIC=null;
+function rr(g,x,y,w,h,r){r=Math.min(r,w/2,h/2);g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+function buildStatic(){
+  const S=2,c=document.createElement('canvas');c.width=WW*S;c.height=WH*S;
+  const g=c.getContext('2d');g.scale(S,S);
+  const rng=mulberry32(42);
+  g.fillStyle='#0b1320';g.fillRect(0,0,WW,WH);
+  const xs=[[-120,VX[0]-BOX],[VX[0]+BOX,VX[1]-BOX],[VX[1]+BOX,VX[2]-BOX],[VX[2]+BOX,VX[3]-BOX],[VX[3]+BOX,WW+120]];
+  const ys=[[-120,HY[0]-BOX],[HY[0]+BOX,HY[1]-BOX],[HY[1]+BOX,HY[2]-BOX],[HY[2]+BOX,WH+120]];
+  const roofs=['#1b2b46','#203250','#182740','#26395b','#1d2f4d'];
+  xs.forEach((X,xi)=>ys.forEach((Y,yi)=>{
+    const x=X[0],y=Y[0],w=X[1]-X[0],h=Y[1]-Y[0];
+    g.fillStyle='#121c2f';rr(g,x,y,w,h,14);g.fill();
+    g.strokeStyle='#1d2c47';g.lineWidth=2;g.stroke();
+    const ix=x+12,iy=y+12,iw=w-24,ih=h-24;
+    const park=(xi===2&&yi===1)||(xi===1&&yi===3)||(xi===3&&yi===2);
+    if(park){
+      g.fillStyle='#0e2a25';rr(g,ix,iy,iw,ih,10);g.fill();
+      for(let k=0;k<60;k++){const tx=ix+8+rng()*(iw-16),ty=iy+8+rng()*(ih-16),r=7+rng()*9;g.fillStyle=rng()>.5?'#14412f':'#195239';g.beginPath();g.arc(tx,ty,r,0,7);g.fill()}
+      g.strokeStyle='#2a4a45';g.lineWidth=5;g.beginPath();g.moveTo(ix+10,iy+ih*.6);g.bezierCurveTo(ix+iw*.3,iy+ih*.3,ix+iw*.6,iy+ih*.9,ix+iw-10,iy+ih*.4);g.stroke();
+      return;
+    }
+    if(xi===3&&yi===0)return; // hospital block drawn later
+    const leaves=[];
+    (function split(x0,y0,w0,h0,d){
+      if(d===0||w0<90||h0<70){leaves.push([x0,y0,w0,h0]);return}
+      if(w0>h0){const k=.35+rng()*.3;split(x0,y0,w0*k-4,h0,d-1);split(x0+w0*k+4,y0,w0*(1-k)-4,h0,d-1)}
+      else{const k=.35+rng()*.3;split(x0,y0,w0,h0*k-4,d-1);split(x0,y0+h0*k+4,w0,h0*(1-k)-4,d-1)}
+    })(ix,iy,iw,ih,2);
+    leaves.forEach(([bx,by,bw,bh])=>{
+      g.save();g.shadowColor='rgba(0,0,0,.55)';g.shadowBlur=14;g.shadowOffsetX=5;g.shadowOffsetY=7;
+      g.fillStyle=roofs[Math.floor(rng()*roofs.length)];rr(g,bx,by,bw,bh,5);g.fill();g.restore();
+      g.strokeStyle='rgba(120,160,220,.22)';g.lineWidth=1.2;rr(g,bx+.6,by+.6,bw-1.2,bh-1.2,5);g.stroke();
+      g.fillStyle='rgba(255,255,255,.04)';rr(g,bx+6,by+6,bw-12,bh-12,3);g.fill();
+      for(let k=0;k<2+Math.floor(rng()*3);k++){g.fillStyle='#2e4568';g.fillRect(bx+10+rng()*(bw-34),by+10+rng()*(bh-30),14+rng()*10,9+rng()*6)}
+    });
+  }));
+  // roads
+  g.fillStyle='#161f31';
+  HY.forEach(y=>g.fillRect(-10,y-BOX,WW+20,BOX*2));
+  VX.forEach(x=>g.fillRect(x-BOX,-10,BOX*2,WH+20));
+  for(let k=0;k<5200;k++){g.fillStyle='rgba(255,255,255,'+(rng()*.03)+')';g.fillRect(rng()*WW,rng()*WH,1.4,1.4)}
+  // centre lines and edge lines (not through junctions)
+  g.strokeStyle='rgba(224,178,60,.55)';g.lineWidth=1.6;
+  HY.forEach(y=>{let x0=-10;VX.concat([WW+10]).forEach(x=>{const x1=x-BOX-4;if(x1>x0){[-2.4,2.4].forEach(o=>{g.beginPath();g.moveTo(x0,y+o);g.lineTo(x1,y+o);g.stroke()})}x0=x+BOX+4})});
+  VX.forEach(x=>{let y0=-10;HY.concat([WH+10]).forEach(y=>{const y1=y-BOX-4;if(y1>y0){[-2.4,2.4].forEach(o=>{g.beginPath();g.moveTo(x+o,y0);g.lineTo(x+o,y1);g.stroke()})}y0=y+BOX+4})});
+  // zebra crossings
+  g.fillStyle='rgba(232,238,248,.5)';
+  HY.forEach(y=>VX.forEach(x=>{
+    for(let k=0;k<8;k++){
+      const o=-BOX+6+k*11;
+      [[x+o,y-BOX-2-14],[x+o,y+BOX+2],[x-BOX-2-14,y+o],[x+BOX+2,y+o]].forEach((p,i)=>{if(i<2)g.fillRect(p[0],p[1],6,14);else g.fillRect(p[0],p[1],14,6)});
+    }
+  }));
+  // lamp pools
+  g.globalCompositeOperation='lighter';
+  const lamp=(x,y)=>{const gr=g.createRadialGradient(x,y,0,x,y,70);gr.addColorStop(0,'rgba(255,214,150,.16)');gr.addColorStop(1,'rgba(255,214,150,0)');g.fillStyle=gr;g.fillRect(x-70,y-70,140,140)};
+  HY.forEach(y=>{for(let x=60;x<WW;x+=140){lamp(x,y-BOX-8);lamp(x+70,y+BOX+8)}});
+  VX.forEach(x=>{for(let y=40;y<WH;y+=140){lamp(x-BOX-8,y);lamp(x+BOX+8,y+70)}});
+  g.globalCompositeOperation='source-over';
+  HY.forEach(y=>{for(let x=60;x<WW;x+=140){[[x,y-BOX-8],[x+70,y+BOX+8]].forEach(p=>{g.fillStyle='#ffd9a0';g.beginPath();g.arc(p[0],p[1],2.2,0,7);g.fill()})}});
+  VX.forEach(x=>{for(let y=40;y<WH;y+=140){[[x-BOX-8,y],[x+BOX+8,y+70]].forEach(p=>{g.fillStyle='#ffd9a0';g.beginPath();g.arc(p[0],p[1],2.2,0,7);g.fill()})}});
+  // hospital
+  g.save();g.shadowColor='rgba(0,0,0,.6)';g.shadowBlur=18;g.shadowOffsetX=6;g.shadowOffsetY=8;
+  g.fillStyle='#d9e3f1';rr(g,1090,22,238,128,8);g.fill();g.restore();
+  g.fillStyle='#eef3fa';rr(g,1100,30,150,112,5);g.fill();
+  g.fillStyle='#c7d5e8';[1262,1286].forEach(x=>{rr(g,x,30,18,112,3);g.fill()});
+  g.fillStyle='#b9c9df';g.beginPath();g.arc(1175,86,40,0,7);g.fill();
+  g.strokeStyle='#e8eef8';g.lineWidth=3;g.beginPath();g.arc(1175,86,34,0,7);g.stroke();
+  g.fillStyle='#e8eef8';g.font='700 38px "Bricolage Grotesque",sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText('H',1175,88);
+  g.fillStyle='#e23b4e';g.fillRect(1296,50,5,24);g.fillRect(1287,59,23,6);
+  for(let k=0;k<6;k++){g.fillStyle=k%2?'#fff':'#e23b4e';g.fillRect(1318,100+k*5,38,5)}
+  g.fillStyle='#8c1f2c';g.fillRect(1318,98,38,2);
+  g.fillStyle='#0b1320';g.globalAlpha=.0;g.globalAlpha=1;
+  g.textAlign='left';g.textBaseline='alphabetic';g.font='600 15px "IBM Plex Sans",sans-serif';g.fillStyle='#e8eef8';
+  g.fillText('Lotus Heart Institute',1100,168);
+  g.font='700 13px "IBM Plex Sans",sans-serif';g.fillStyle='#fff';g.textAlign='center';g.fillText('ER',1337,92);g.textAlign='left';
+  // patient
+  g.fillStyle='#e8eef8';g.font='600 14px "IBM Plex Sans",sans-serif';g.fillText('Patient pickup',58,846);
+  return c;
+}
+function resize(){
+  DPR=Math.min(3,Math.max(1,(window.devicePixelRatio||1)*K));VW=Math.max(1,stage.offsetWidth);VH=Math.max(1,stage.offsetHeight);
+  cv.width=Math.round(VW*DPR);cv.height=Math.round(VH*DPR);
+  SC=Math.min(Math.max(VW/WW,VH/WH),VW/1250,VH/790);
+  OX=VW/2-820*SC;OY=VH/2-490*SC;
+  OX=WW*SC>=VW?clamp(OX,VW-WW*SC,0):(VW-WW*SC)/2;
+  OY=WH*SC>=VH?clamp(OY,VH-WH*SC,0):(VH-WH*SC)/2;
+}
+function drawVeh(c,time){
+  const L=LANE[c.lane],pt=lanePoint(L,c.p-c.len/2),th=L.th;
+  const x=pt.x+Math.sin(th)*c.lat,y=pt.y-Math.cos(th)*c.lat,len=c.len,w=c.w;
+  ctx.save();ctx.translate(x,y);ctx.rotate(th);
+  // headlight cone
+  ctx.globalCompositeOperation='lighter';
+  const gr=ctx.createLinearGradient(len/2,0,len/2+56,0);gr.addColorStop(0,'rgba(255,236,190,.2)');gr.addColorStop(1,'rgba(255,236,190,0)');
+  ctx.fillStyle=gr;ctx.beginPath();ctx.moveTo(len/2,-w*.35);ctx.lineTo(len/2+56,-w*1.1);ctx.lineTo(len/2+56,w*1.1);ctx.lineTo(len/2,w*.35);ctx.closePath();ctx.fill();
+  ctx.globalCompositeOperation='source-over';
+  ctx.fillStyle='rgba(0,0,0,.35)';rr(ctx,-len/2+2,-w/2+3,len,w,4);ctx.fill();
+  if(c.type==='bike'){
+    ctx.fillStyle='#10161f';rr(ctx,-len/2,-w/2,len,w,3);ctx.fill();
+    ctx.fillStyle=c.col;ctx.beginPath();ctx.arc(-1,0,4.4,0,7);ctx.fill();
+    ctx.fillStyle='#e8eef8';ctx.fillRect(len/2-2,-1.4,2.6,2.8);
+  }else if(c.type==='auto'){
+    ctx.fillStyle='#f0c331';rr(ctx,-len/2,-w/2,len,w,6);ctx.fill();
+    ctx.fillStyle='#1c2331';rr(ctx,-len/2+3,-w/2+2,len*.55,w-4,4);ctx.fill();
+    ctx.fillStyle='#2f3a4f';ctx.fillRect(len/2-8,-w/2+3,3,w-6);
+    ctx.fillStyle='#fff6d6';ctx.fillRect(len/2-2,-2,2.6,4);
+  }else if(c.type==='bus'||c.type==='truck'){
+    ctx.fillStyle=c.type==='bus'?'#c4404f':c.col;rr(ctx,-len/2,-w/2,len,w,5);ctx.fill();
+    ctx.fillStyle=c.type==='bus'?'#e7a1a8':'rgba(255,255,255,.18)';rr(ctx,-len/2+4,-w/2+3,len-20,w-6,3);ctx.fill();
+    if(c.type==='bus'){ctx.fillStyle='rgba(20,28,45,.75)';for(let k=0;k<5;k++)ctx.fillRect(-len/2+8+k*10,-w/2+4,6,w-8)}
+    else{ctx.fillStyle='#1a2233';rr(ctx,len/2-14,-w/2+2,12,w-4,3);ctx.fill()}
+    ctx.fillStyle='#fff6d6';ctx.fillRect(len/2-2,-w/2+2,2.6,3.4);ctx.fillRect(len/2-2,w/2-5.4,2.6,3.4);
+  }else{
+    ctx.fillStyle=c.col;rr(ctx,-len/2,-w/2,len,w,5);ctx.fill();
+    ctx.fillStyle='rgba(8,14,26,.82)';rr(ctx,len*.06,-w/2+2,len*.2,w-4,2);ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,.18)';rr(ctx,-len*.32,-w/2+2.4,len*.38,w-4.8,3);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(-len/2+2,-.6,len-4,1.2);
+    ctx.fillStyle='#fff6d6';ctx.fillRect(len/2-2.4,-w/2+1.8,2.8,3);ctx.fillRect(len/2-2.4,w/2-4.8,2.8,3);
+  }
+  ctx.fillStyle=c.brake?'#ff4457':'#8a1f2b';
+  if(c.type==='bike')ctx.fillRect(-len/2,-1.2,2,2.4);else{ctx.fillRect(-len/2,-w/2+1.6,2.4,3);ctx.fillRect(-len/2,w/2-4.6,2.4,3)}
+  ctx.restore();
+}
+
+function drawGhost(x,y,th){
+  /* position marker, not a vehicle body, so it never looks like it drives through traffic */
+  ctx.save();ctx.translate(x,y);ctx.rotate(th);
+  ctx.strokeStyle='rgba(190,205,225,.85)';ctx.fillStyle='rgba(190,205,225,.22)';ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.arc(0,0,15,0,7);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(-5,-6);ctx.lineTo(-5,6);ctx.closePath();ctx.fillStyle='rgba(225,233,245,.95)';ctx.fill();
+  ctx.restore();
+}
+function drawAmb(x,y,th,time,ghost,flash){
+  ctx.save();ctx.translate(x,y);ctx.rotate(th);
+  const len=44,w=19;
+  if(ghost){ctx.globalAlpha=.5}
+  else{
+    ctx.globalCompositeOperation='lighter';
+    [[-6,0,flash?'255,60,80':'70,140,255'],[6,0,flash?'70,140,255':'255,60,80']].forEach(([ox,oy,col])=>{
+      const gr=ctx.createRadialGradient(ox,oy,0,ox,oy,64);gr.addColorStop(0,'rgba('+col+',.5)');gr.addColorStop(1,'rgba('+col+',0)');ctx.fillStyle=gr;ctx.fillRect(ox-64,oy-64,128,128);
+    });
+    const hg=ctx.createLinearGradient(len/2,0,len/2+90,0);hg.addColorStop(0,'rgba(255,244,214,.32)');hg.addColorStop(1,'rgba(255,244,214,0)');
+    ctx.fillStyle=hg;ctx.beginPath();ctx.moveTo(len/2,-5);ctx.lineTo(len/2+90,-34);ctx.lineTo(len/2+90,34);ctx.lineTo(len/2,5);ctx.closePath();ctx.fill();
+    ctx.globalCompositeOperation='source-over';
+  }
+  ctx.fillStyle='rgba(0,0,0,.4)';rr(ctx,-len/2+2,-w/2+3,len,w,5);ctx.fill();
+  ctx.fillStyle=ghost?'#9fb0c7':'#f4f7fb';rr(ctx,-len/2,-w/2,len,w,5);ctx.fill();
+  ctx.fillStyle=ghost?'#6c7e97':'#e23b4e';ctx.fillRect(-len/2+2,-w/2+1.5,len-4,2.4);ctx.fillRect(-len/2+2,w/2-3.9,len-4,2.4);
+  ctx.fillStyle='rgba(10,20,40,.85)';rr(ctx,len/2-13,-w/2+2.4,9,w-4.8,2);ctx.fill();
+  ctx.fillStyle=ghost?'#5d6e86':'#e23b4e';ctx.fillRect(-9,-1.8,12,3.6);ctx.fillRect(-4.9,-6,3.6,12);
+  if(!ghost){
+    ctx.fillStyle=flash?'#ff3d57':'#7a1b29';ctx.fillRect(len/2-20,-w/2+3,4,6.4);
+    ctx.fillStyle=flash?'#2d5bff':'#1c2f6b';ctx.fillRect(len/2-20,w/2-9.4,4,6.4);
+    ctx.fillStyle='#fff6d6';ctx.fillRect(len/2-2.2,-w/2+2,2.8,3.4);ctx.fillRect(len/2-2.2,w/2-5.4,2.8,3.4);
+  }
+  ctx.restore();
+}
+function pill(text,x,y,color,fs,fill,right){
+  ctx.font='600 '+fs+'px "IBM Plex Sans",sans-serif';
+  const w=ctx.measureText(text).width+fs*2.1,h=fs*1.8;
+  if(right)x-=w;x=clamp(x,VIS.x0+6,VIS.x1-w-6);y=clamp(y,VIS.y0+h/2+6,VIS.y1-h/2-6);
+  rr(ctx,x,y-h/2,w,h,h/2);ctx.fillStyle=fill||'rgba(8,14,26,.86)';ctx.fill();
+  ctx.lineWidth=1.4;ctx.strokeStyle=color;ctx.stroke();
+  ctx.fillStyle=color;ctx.beginPath();ctx.arc(x+fs*.85,y,fs*.3,0,7);ctx.fill();
+  ctx.fillStyle='#e8eef8';ctx.textBaseline='middle';ctx.fillText(text,x+fs*1.5,y+.5);
+}
+const SIGC={g:'#3DDC97',y:'#FFB224',r:'#FF5468'};
+function drawWorld(main,ghostSim,time){
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.fillStyle='#070d18';ctx.fillRect(0,0,VW,VH);
+  camUpdate(main,time);ctx.setTransform(DPR*CS,0,0,DPR*CS,DPR*COX,DPR*COY);
+  ctx.save();ctx.beginPath();ctx.rect(0,0,WW,WH);ctx.clip();
+  if(STATIC)ctx.drawImage(STATIC,0,0,WW,WH);
+  const a=main.amb,fs=clamp(12/CS,13,30),flash=Math.floor(time*6)%2===0;
+  // planned route
+  const P=PATH;
+  ctx.lineCap='round';ctx.lineJoin='round';
+  const sIdx=Math.floor(a.s/P.STEP);
+  ctx.beginPath();for(let i=sIdx;i<=P.n;i++){i===sIdx?ctx.moveTo(P.X[i],P.Y[i]):ctx.lineTo(P.X[i],P.Y[i])}
+  ctx.strokeStyle='rgba(92,200,255,.16)';ctx.lineWidth=16;ctx.stroke();
+  ctx.setLineDash([12,12]);ctx.lineDashOffset=-time*28;ctx.strokeStyle='rgba(92,200,255,.75)';ctx.lineWidth=3;ctx.stroke();ctx.setLineDash([]);
+  // opened lane ahead
+  if(main.system&&main.t>=main.tArm&&a.started&&!a.done){
+    const e=Math.min(P.n,Math.floor((a.s+YD)/P.STEP));
+    ctx.beginPath();for(let i=sIdx;i<=e;i++){i===sIdx?ctx.moveTo(P.X[i],P.Y[i]):ctx.lineTo(P.X[i],P.Y[i])}
+    ctx.strokeStyle='rgba(255,178,36,.20)';ctx.lineWidth=38;ctx.stroke();
+    ctx.strokeStyle='rgba(255,178,36,.30)';ctx.lineWidth=2;ctx.setLineDash([3,9]);ctx.stroke();ctx.setLineDash([]);
+    for(let s=a.s+30+((-time*70)%36+36)%36;s<a.s+YD;s+=36){
+      const q=poseAt(s),al=1-(s-a.s)/YD;
+      ctx.save();ctx.translate(q.x,q.y);ctx.rotate(q.th);ctx.strokeStyle='rgba(255,196,80,'+(.75*al)+')';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-5,-9);ctx.lineTo(3,0);ctx.lineTo(-5,9);ctx.stroke();ctx.restore();
+    }
+  }
+  // signals
+  const jt=main.t;
+  for(let c=0;c<4;c++)for(let r=0;r<3;r++){
+    const j=main.J[c][r],rjk=RJ.findIndex(q=>q.c===c&&q.r===r),rj=rjk>=0?RJ[rjk]:null;
+    for(const L of LANES){
+      const ct=L.centers.find(q=>q.c===c&&q.r===r);if(!ct)continue;
+      const st=sigState(j,L.axis,L.key),col=SIGC[st],pt=lanePoint(L,ct.p-STOP),th=L.th;
+      ctx.save();ctx.translate(pt.x,pt.y);ctx.rotate(th);
+      ctx.lineCap='butt';
+      ctx.strokeStyle=col;ctx.globalAlpha=.28;ctx.lineWidth=10;ctx.beginPath();ctx.moveTo(0,-LO);ctx.lineTo(0,LO);ctx.stroke();
+      ctx.globalAlpha=1;ctx.lineWidth=3.4;ctx.beginPath();ctx.moveTo(0,-LO+1);ctx.lineTo(0,LO-1);ctx.stroke();
+      // lamp head on the kerb
+      ctx.translate(-4,-(LO+13));
+      ctx.fillStyle='#0a0f19';rr(ctx,-6,-14,12,28,4);ctx.fill();
+      [['r',-8],['y',0],['g',8]].forEach(([k,o])=>{ctx.fillStyle=(k===st)?SIGC[k]:'#1d2433';if(k===st){ctx.shadowColor=SIGC[k];ctx.shadowBlur=10}ctx.beginPath();ctx.arc(0,o,3.4,0,7);ctx.fill();ctx.shadowBlur=0});
+      ctx.restore();
+    }
+    if(rj){
+      const cx=rj.x,cy=rj.y,stt=j.status;
+      let col='rgba(141,161,189,.55)',al=.5;
+      if(stt==='preparing'){col='#FFB224';al=.6+.4*Math.sin(time*8)}
+      else if(stt==='priority'){col='#3DDC97';al=1}
+      else if(stt==='released'){col='rgba(61,220,151,.45)';al=.6}
+      else if(stt==='failsafe'){col='#FF5468';al=.9}
+      ctx.save();ctx.globalAlpha=al;ctx.strokeStyle=col;ctx.lineWidth=stt==='priority'?5:3;
+      if(stt==='standby')ctx.setLineDash([6,8]);
+      ctx.beginPath();ctx.arc(cx,cy,74,0,7);ctx.stroke();ctx.setLineDash([]);
+      if(stt==='priority'||stt==='preparing'){ctx.globalCompositeOperation='lighter';const gr=ctx.createRadialGradient(cx,cy,40,cx,cy,100);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(.7,(stt==='priority'?'rgba(61,220,151,.22)':'rgba(255,178,36,.18)'));gr.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=gr;ctx.fillRect(cx-100,cy-100,200,200)}
+      ctx.restore();
+    }
+  }
+  // patient pin
+  ctx.save();ctx.translate(142,862);
+  const pr=(time*40)%34;ctx.strokeStyle='rgba(255,84,104,'+(.6*(1-pr/34))+')';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(0,0,pr,0,7);ctx.stroke();
+  ctx.fillStyle='#FF5468';ctx.beginPath();ctx.arc(0,0,7,0,7);ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();ctx.restore();
+  // vehicles
+  for(const L of main.lanes)for(const c of L.cars)if(!c.amb)drawVeh(c,time);
+  // ghost
+  let gp=null,ap=null;
+  if(false&&ghostSim){
+    const g=ghostSim.amb,q=poseAt(Math.max(0,g.s-22)),n={x:q.x+Math.sin(q.th)*g.lat,y:q.y-Math.cos(q.th)*g.lat};
+    if(ghostSim.t>=ghostSim.tLaunch||g.done){
+      drawGhost(n.x,n.y,q.th);
+      ctx.save();ctx.strokeStyle='rgba(159,176,199,.7)';ctx.setLineDash([5,5]);ctx.lineWidth=2;ctx.beginPath();ctx.arc(n.x,n.y,34,0,7);ctx.stroke();ctx.restore();
+      gp={x:n.x+36,y:n.y-34};
+    }
+  }
+  // ambulance
+  {
+    const q=poseAt(Math.max(0,a.s-22)),x=q.x+Math.sin(q.th)*a.lat,y=q.y-Math.cos(q.th)*a.lat;
+    if(a.started&&!a.done){
+      for(let k=0;k<2;k++){const rad=((time*70+k*40)%80);ctx.strokeStyle='rgba(255,84,104,'+(.38*(1-rad/80))+')';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,rad,0,7);ctx.stroke()}
+    }
+    drawAmb(x,y,q.th,time,false,flash);
+    if(a.started||main.t>=main.tLaunch-1){
+      const kmh=Math.round(a.v*0.36);
+      ap={x:x+30,y:y+40,t:'Ambulance 07 · '+kmh+' km/h'};
+    }
+  }
+  // junction labels
+  RJ.forEach((rj,k)=>{
+    const j=main.J[rj.c][rj.r],stt=j.status;
+    if(camZ>1.04&&!(stt==='preparing'||stt==='priority'||(!main.system&&k===nextRJ(main))))return;
+    const lab={standby:'Standby',preparing:'Preparing',priority:'Priority green',released:'Released',failsafe:'Fail-safe'}[stt];
+    const col={standby:'#8DA1BD',preparing:'#FFB224',priority:'#3DDC97',released:'#3DDC97',failsafe:'#FF5468'}[stt];
+    const txt=main.system?('J'+(k+1)+' '+(SC>.42?rj.name+' · ':'')+lab):('J'+(k+1)+(SC>.42?' '+rj.name:''));
+    pill(txt,rj.c===3?rj.x-50:rj.x+50,rj.y-58,main.system?col:'#8DA1BD',fs,null,rj.c===3);
+  });
+  if(gp)pill('Normal ambulance',gp.x,gp.y,'#9fb0c7',fs);
+  if(ap)pill(ap.t,ap.x,ap.y,'#ff5468',fs);
+  ctx.restore();
+}
+
+/* ───────── driver app text ───────── */
+const TX={
+  en:{title:'Emergency trip',straight:'Go straight',left:'Turn left',right:'Turn right',now:'Now',arrive:'Reached hospital',g:'Cleared. Keep going',a:'Request sent. Wait',r:'Not cleared. Look carefully',help:'Call help',voice:'Voice',sig:'Next signal',off:'No internet. Following the saved route.',rer:'Off route. New route fetched.',left_:' to hospital',m:'m',wait:'Waiting for dispatch',in:'In',spk:{turn:(n,d)=>'In '+n+' meters, '+d,g:'Signal cleared. Keep going.',a:'Request sent. Wait.',r:'Signal not cleared. Look carefully.',arr:'You have reached the hospital.'},lang:'en-IN'},
+  mr:{title:'आपत्कालीन फेरी',straight:'सरळ चला',left:'डावीकडे वळा',right:'उजवीकडे वळा',now:'आता',arrive:'रुग्णालयात पोहोचलात',g:'मार्ग मोकळा, पुढे चला',a:'विनंती पाठवली, थांबा',r:'सिग्नल लाल, काळजीपूर्वक पाहा',help:'मदत बोलवा',voice:'आवाज',sig:'पुढचा सिग्नल',off:'इंटरनेट नाही. साठवलेल्या मार्गावर चला.',rer:'मार्ग चुकला. नवीन मार्ग मिळाला.',left_:' रुग्णालयापर्यंत',m:'मी',wait:'सूचनेची वाट पाहत आहे',in:'',spk:{turn:(n,d)=>n+' मीटर नंतर, '+d,g:'मार्ग मोकळा, पुढे चला.',a:'विनंती पाठवली, थांबा.',r:'सिग्नल लाल, काळजीपूर्वक पाहा.',arr:'तुम्ही रुग्णालयात पोहोचलात.'},lang:'mr-IN'},
+  hi:{title:'आपातकालीन यात्रा',straight:'सीधे चलें',left:'बाएँ मुड़ें',right:'दाएँ मुड़ें',now:'अभी',arrive:'अस्पताल पहुँच गए',g:'रास्ता साफ़, आगे बढ़ें',a:'अनुरोध भेजा, रुकें',r:'सिग्नल लाल, ध्यान से देखें',help:'मदद बुलाएँ',voice:'आवाज़',sig:'अगला सिग्नल',off:'इंटरनेट नहीं है। सहेजे हुए रास्ते पर चलें।',rer:'रास्ता भटके। नया रास्ता मिला।',left_:' अस्पताल तक',m:'मी',wait:'निर्देश की प्रतीक्षा',in:'',spk:{turn:(n,d)=>n+' मीटर बाद, '+d,g:'रास्ता साफ़, आगे बढ़ें।',a:'अनुरोध भेजा, रुकें।',r:'सिग्नल लाल, ध्यान से देखें।',arr:'आप अस्पताल पहुँच गए।'},lang:'hi-IN'}
+};
+let LANGK='en',VOX=false,langUsed=false;
+function speak(s){
+  if(!VOX||!('speechSynthesis' in window)||speed!==1)return;
+  try{window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(s);u.lang=TX[LANGK].lang;u.rate=1.05;window.speechSynthesis.speak(u)}catch(e){}
+}
+
+/* ───────── app state ───────── */
+let density='moderate',view='corridor',speed=1,paused=false,phase='idle',tZero=0,introIdx=0,resultShown=false,finishedAt=0;
+let SA=null,SB=null; // SA = with corridor, SB = siren only
+let logIdx=0,lastUI=0,lastMan='',lastSig='',spoken={};
+function newSims(){
+  langUsed=false;
+  SA=new Sim(true,density,7);SB=new Sim(false,density,7);
+  phase='idle';introIdx=0;resultShown=false;logIdx=0;spoken={};lastMan='';lastSig='';
+  $('#log').innerHTML='';$('#dlist').innerHTML='';
+  ['#dispatch','#count','#legend','#result'].forEach(s=>$(s).hidden=true);
+  $('#startCard').hidden=false;$('#btnNet').textContent='Lose internet';$('#btnNet').classList.remove('on');
+  netOff=false;
+}
+let netOff=false;
+const main=()=>view==='corridor'?SA:SB,ghost=()=>view==='corridor'?SB:SA;
+const DISPATCH=[
+  {t:.4,k:'call',title:'Emergency call received',sub:'Caller reports chest pain and difficulty breathing.'},
+  {t:2,k:'call',title:'Details retrieved',sub:'Phone location, 19:42, government Ambulance 07.'},
+  {t:3.6,k:'triage',title:'AI triage: code red confirmed',sub:'Suspected cardiac event. Needs a cardiac cath lab and an ICU bed.'},
+  {t:5,k:'triage',title:'Hospitals within 5 km compared',hosp:true},
+  {t:6.4,k:'route',title:'Lotus Heart Institute selected',sub:'Fastest route found on live traffic. Six signals ahead, ETA set for each.'}
+];
+function startTrip(skip){
+  if(phase!=='idle')return;
+  phase='intro';tZero=SA.t;
+  [SA,SB].forEach(s=>{s.tArm=tZero+T_ARM;s.tLaunch=tZero+T_LAUNCH});
+  $('#startCard').hidden=true;$('#dispatch').hidden=false;$('#legend').hidden=false;
+  {let n=0;while(!SB.amb.done&&n<60*240){SB.step(DT);n++}}
+  if(skip){const target=tZero+T_LAUNCH-2.5;while(SA.t<target){SA.step(DT)}}
+  if('speechSynthesis' in window&&VOX){try{window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(' ');u.volume=0;window.speechSynthesis.speak(u)}catch(e){}}
+}
+function renderDispatch(){
+  const rel=SA.t-tZero;
+  while(introIdx<DISPATCH.length&&rel>=DISPATCH[introIdx].t){
+    const d=DISPATCH[introIdx++],li=document.createElement('li');
+    let h='<b>'+d.title+'</b>';
+    if(d.sub)h+='<span>'+d.sub+'</span>';
+    if(d.hosp)h+='<div class="hlist"><div class="hl pick"><b>Lotus Heart Institute</b><em>3.1 km</em><small>Private. Cath lab and ICU free. Best match.</small></div><div class="hl"><b>Municipal General</b><em>1.4 km</em><small>Government. No cardiac unit.</small></div><div class="hl"><b>St. Anne Clinic</b><em>2.2 km</em><small>Private. ICU full.</small></div></div>';
+    li.innerHTML=h;$('#dlist').appendChild(li);
+    SA.ev(d.k==='triage'?'info':'info',d.title+'.');
+  }
+}
+
+/* ───────── UI ───────── */
+function setPill(el,txt,cls){el.className='chip '+(cls||'');el.innerHTML='<i></i>'+txt}
+const STAT={standby:['Standby',''],preparing:['Preparing','preparing'],priority:['Green held','priority'],released:['Released','released'],failsafe:['Fail-safe','failsafe']};
+function buildLadder(){
+  $('#ladder').innerHTML=RJ.map((rj,k)=>'<li data-k="'+k+'"><span class="j">J'+(k+1)+'</span><div class="nm">'+rj.name+'<small>'+(rj.kind==='turn'?(rj.turn==='right'?'Right turn':'Left turn'):'Straight')+'</small></div><span class="pill" data-p>Standby</span><span class="eta" data-e>--</span></li>').join('');
+}
+const TW={};
+function buildTwin(){
+  const svg=$('#twin');
+  const arm=(id,rect,q,sg,lx,ly,anchor)=>'<rect x="'+rect[0]+'" y="'+rect[1]+'" width="'+rect[2]+'" height="'+rect[3]+'" rx="3" fill="#161f31"/><rect id="q'+id+'" x="0" y="0" width="0" height="0" rx="2"/><rect id="s'+id+'" x="'+sg[0]+'" y="'+sg[1]+'" width="'+sg[2]+'" height="'+sg[3]+'" rx="1.5" fill="#8DA1BD"/><text id="t'+id+'" x="'+lx+'" y="'+ly+'" text-anchor="'+anchor+'"></text>';
+  svg.innerHTML=
+    arm('N',[84,6,32,70],0,[102,70,13,4],124,16,'start')+
+    arm('S',[84,124,32,70],0,[85,126,13,4],76,192,'end')+
+    arm('W',[6,84,70,32],0,[70,85,4,13],8,76,'start')+
+    arm('E',[124,84,70,32],0,[126,102,4,13],192,130,'end')+
+    '<rect x="76" y="76" width="48" height="48" rx="6" fill="#1b2840" stroke="#2a3d5e"/><path d="M100 82v36M82 100h36" stroke="rgba(224,178,60,.4)" stroke-width="1" stroke-dasharray="3 3"/><circle id="twB" cx="100" cy="100" r="7" fill="none" stroke="#FFB224" stroke-width="2" opacity="0"/>';
+  ['N','S','W','E'].forEach(d=>{TW[d]={q:svg.querySelector('#q'+d),s:svg.querySelector('#s'+d),t:svg.querySelector('#t'+d)}});
+  TW.b=svg.querySelector('#twB');
+}
+const LVC={Low:'#5CC8FF',Medium:'#FFB224',High:'#FF5468'};
+function updateTwin(m,k){
+  const rj=RJ[k],ap=m.approach(rj.c,rj.r),j=m.J[rj.c][rj.r];
+  const geo={N:{x:102,w:14,dir:'up',y0:70},S:{x:85,w:14,dir:'down',y0:130},W:{y:85,h:14,dir:'left',x0:70},E:{y:103,h:14,dir:'right',x0:130}};
+  ['N','S','W','E'].forEach(d=>{
+    const a=ap[d],n=Math.min(a.n,6)*10,g=geo[d],q=TW[d].q;
+    q.setAttribute('fill',LVC[a.level]);q.setAttribute('opacity','.75');
+    if(g.dir==='up'){q.setAttribute('x',g.x);q.setAttribute('width',g.w);q.setAttribute('y',g.y0-n);q.setAttribute('height',n)}
+    if(g.dir==='down'){q.setAttribute('x',g.x);q.setAttribute('width',g.w);q.setAttribute('y',g.y0);q.setAttribute('height',n)}
+    if(g.dir==='left'){q.setAttribute('y',g.y);q.setAttribute('height',g.h);q.setAttribute('x',g.x0-n);q.setAttribute('width',n)}
+    if(g.dir==='right'){q.setAttribute('y',g.y);q.setAttribute('height',g.h);q.setAttribute('x',g.x0);q.setAttribute('width',n)}
+    TW[d].s.setAttribute('fill',SIGC[a.state]);
+    TW[d].t.textContent=d+' · '+a.level;
+  });
+  TW.b.setAttribute('opacity',j.status==='preparing'||j.status==='priority'?'1':'0');
+  $('#twinTitle').textContent='J'+(k+1)+' '+rj.name;
+  const st=j.status;
+  setPill($('#twinChip'),m.system?STAT[st][0]:'Fixed timing',m.system?(st==='priority'?'go':st==='preparing'?'wait':st==='failsafe'?'stop':''):'');
+  let msg;
+  if(!m.system)msg='Fixed timing. The ambulance waits for green and for the queue ahead.';
+  else if(st==='standby')msg='Watching the approach. Normal signal cycle until the ETA is close.';
+  else if(st==='preparing')msg='Clearing '+(rj.axis==='NS'?'East and West':'North and South')+' with a safe yellow and all-red. '+(rj.opp?'Oncoming lane held for the right turn.':'');
+  else if(st==='priority')msg='Green held for the ambulance. Conflicting traffic is stopped.'+(rj.opp?' Oncoming lane held.':'');
+  else if(st==='released')msg='Ambulance has passed. Priority released, normal cycle resumed.';
+  else msg='Connection lost. Returned to normal cycle (fail-safe).';
+  $('#decision').textContent=msg;
+}
+function addLog(e){
+  const li=document.createElement('li');li.className='new';
+  li.innerHTML='<time>'+clockStr(e.t).slice(0,8)+'</time><i class="'+(e.kind==='info'?'':e.kind)+'"></i><span></span>';
+  li.querySelector('span').textContent=e.msg;
+  const ul=$('#log');ul.insertBefore(li,ul.firstChild);while(ul.children.length>60)ul.removeChild(ul.lastChild);
+}
+function nextRJ(m){const s=m.amb.s;for(let k=0;k<6;k++)if(s<=RJ[k].sPast)return k;return 5}
+function ambSignal(m,k){
+  const rj=RJ[k],j=m.J[rj.c][rj.r],st=sigState(j,rj.axis,'amb');
+  if(st==='g')return'g';
+  if(m.system&&(j.status==='preparing'||j.status==='priority'))return'a';
+  return'r';
+}
+function updateUI(){
+  const m=main(),g=ghost(),a=m.amb,tx=TX[LANGK];
+  // steps
+  const rel=SA.t-tZero;
+  let stepK='call';
+  if(phase==='idle')stepK='';
+  else if(a.done&&SA.amb.done)stepK='arrive';
+  else if(m.amb.started)stepK='corridor';
+  else if(rel>=6.4)stepK='route';
+  else if(rel>=3.6)stepK='triage';
+  const order=['call','triage','route','corridor','arrive'],ci=order.indexOf(stepK);
+  document.querySelectorAll('#steps li').forEach(li=>{const i=order.indexOf(li.dataset.k);li.className=stepK===''?'':(i<ci||(stepK==='arrive'&&i===4)?'done':i===ci?'active':'')});
+  // trip
+  const chip=$('#tripChip');
+  if(phase==='idle')setPill(chip,'Waiting','');
+  else if(a.done)setPill(chip,'Arrived','go');
+  else if(a.started)setPill(chip,'En route','info');
+  else setPill(chip,'Dispatching','wait');
+  $('#kSpeed').textContent=Math.round(a.v*.36);
+  const remain=(SEND-a.s)/CRUISE*TS;
+  $('#kEta').textContent=a.done||phase==='idle'?(a.done?'0:00':fmt(SEND/CRUISE*TS)):fmt(remain+(a.started?0:Math.max(0,m.tLaunch-m.t)*TS));
+  const passed=RJ.filter(rj=>a.s>rj.sPast).length;
+  $('#kPass').textContent=passed+'/6';
+  // ladder
+  document.querySelectorAll('#ladder li').forEach(li=>{
+    const k=+li.dataset.k,rj=RJ[k],j=m.J[rj.c][rj.r],p=li.querySelector('[data-p]'),e=li.querySelector('[data-e]');
+    li.classList.toggle('cur',k===nextRJ(m)&&!a.done);
+    if(m.system){const st=STAT[j.status];p.textContent=st[0];p.className='pill '+st[1]}
+    else{const s=sigState(j,rj.axis,'amb');p.textContent=a.s>rj.sPast?'Passed':(s==='g'?'Green':s==='y'?'Yellow':'Red');p.className='pill'+(a.s>rj.sPast?' released':'')}
+    e.textContent=a.s>rj.sPast?'✓':a.started?(Math.max(0,(rj.sStop-a.s)/CRUISE*TS)).toFixed(0)+' s':'--';
+  });
+  updateTwin(m,nextRJ(m));
+  // clocks and race
+  const tA=SA.amb.done?SA.amb.tDone:(SA.amb.started?SA.t-SA.amb.tStart:0),tB=(phase==='idle'||!SB.amb.done)?0:SB.amb.tDone;
+    $('#rA').textContent=fmt(tA*TS);$('#rB').textContent=tB?fmt(tB*TS):'0:00';
+  $('#rpA').style.width=(SA.amb.s/SEND*100)+'%';$('#rpB').style.width=tB?Math.min(100,tA/tB*100)+'%':'0%';
+  $('#rsa').textContent=SA.amb.stops+(SA.amb.stops===1?' stop':' stops')+', '+fmt(SA.amb.waitT*TS)+' waiting';
+  $('#rsb').textContent=(phase==='idle'?'':'Same traffic without AMBRIDGE: '+SB.amb.stops+' stops, '+fmt(SB.amb.waitT*TS)+' waiting');
+  $('#dispatch').hidden=phase==='idle'||SA.amb.started;
+  const fl=SA.flags;let fc=0;
+  document.querySelectorAll('#feat li').forEach(li=>{const f=li.dataset.f,on=f==='lang'?langUsed:!!fl[f];li.classList.toggle('on',on);if(on)fc++});
+  $('#featN').innerHTML='<i></i>'+fc+'/6';
+  // countdown
+  const cd=$('#count');
+  if(phase!=='idle'&&!SA.amb.started){const left=Math.max(0,Math.ceil(tZero+T_LAUNCH-SA.t));cd.hidden=false;$('#countN').textContent=left}else cd.hidden=true;
+  // log
+  const ev=m.events;while(logIdx<ev.length)addLog(ev[logIdx++]);
+  // phone
+  $('#phClock').textContent=clockStr(m.t).slice(0,5);
+  $('#phTitle').textContent=tx.title;
+  $('#phNet').textContent=netOff?'No signal':'5G';
+  $('#btnHelp').textContent=tx.help;$('#btnVox').textContent=tx.voice;
+  $('#phLeft').textContent=a.done?'':Math.round((SEND-a.s)*MPP)+' '+tx.m+tx.left_;
+  const scr=$('#screen');scr.style.fontFamily=LANGK==='en'?'':'var(--f-dev)';
+  const ban=$('#phBanner');
+  if(netOff&&m.system){ban.hidden=false;ban.textContent=tx.off}
+  else if(m.t<(m.rerouteUntil||0)){ban.hidden=false;ban.textContent=tx.rer}
+  else ban.hidden=true;
+  // maneuver
+  let manKey,manDist,ang=0,manTxt;
+  if(a.done){manKey='arrive';manTxt=tx.arrive;manDist='✓';ang=0}
+  else if(!a.started){manKey='wait';manTxt=tx.wait;manDist='';ang=0}
+  else{
+    const ar=PATH.arcs.find(x=>a.s<x.s1);
+    if(ar){
+      const d=Math.max(0,ar.s0-a.s)*MPP;
+      if(a.s>=ar.s0){manKey=ar.dir+'now';manTxt=tx[ar.dir];manDist=tx.now;ang=ar.dir==='right'?90:-90}
+      else{manKey=ar.dir+Math.round(d/10);manTxt=tx[ar.dir];manDist=(Math.round(d/10)*10)+' '+tx.m;ang=ar.dir==='right'?90:-90}
+      if(d>0&&d<=45&&!spoken['t'+PATH.arcs.indexOf(ar)]){spoken['t'+PATH.arcs.indexOf(ar)]=1;speak(tx.spk.turn(Math.round(d/10)*10,tx[ar.dir]))}
+    }else{manKey='st'+Math.round((SEND-a.s)*MPP/10);manTxt=tx.straight;manDist=(Math.round((SEND-a.s)*MPP/10)*10)+' '+tx.m;ang=0}
+  }
+  $('#manText').textContent=manTxt;$('#manDist').textContent=manDist;
+  $('#arrow').style.transform='rotate('+ang+'deg)';
+  if(a.done&&!spoken.arr){spoken.arr=1;speak(tx.spk.arr)}
+  // signal banner
+  const sg=$('#sig');
+  if(!a.started||a.done){sg.className='sig n';$('#sigText').textContent=tx.sig;$('#sigSub').textContent=''}
+  else{
+    const k=nextRJ(m),st=ambSignal(m,k),d=Math.max(0,Math.round((RJ[k].sStop-a.s)*MPP));
+    sg.className='sig '+st;$('#sigText').textContent=tx[st];$('#sigSub').textContent=tx.sig+': '+RJ[k].name+', '+d+' '+tx.m;
+    const key=k+st;if(key!==lastSig){lastSig=key;if(d<200)speak(tx.spk[st])}
+  }
+  // result
+  if(!resultShown&&SA.amb.done&&SB.amb.done){
+    if(!finishedAt)finishedAt=performance.now();
+    if(performance.now()-finishedAt>1400)showResult();
+  }
+}
+function showResult(){
+  resultShown=true;
+  const tA=SA.amb.tDone*TS,tB=SB.amb.tDone*TS,max=Math.max(tA,tB);
+  $('#rtA').textContent=fmt(tA);$('#rtB').textContent=fmt(tB);
+  $('#rsA').textContent=SA.amb.stops+' stops, '+fmt(SA.amb.waitT*TS)+' waiting';
+  $('#rsB').textContent=SB.amb.stops+' stops, '+fmt(SB.amb.waitT*TS)+' waiting';
+  const saved=tB-tA,pct=Math.round(saved/tB*100);
+  $('#saved').innerHTML=saved>0?'AMBRIDGE took <em>'+fmt(tA)+'</em>. A normal ambulance needs <em>'+fmt(tB)+'</em>. That is <em>'+pct+'% less time</em>.':'No time saved in this run. Try heavier traffic to see the difference.';
+  $('#result').hidden=false;
+  $('#rbA').style.width='0';$('#rbB').style.width='0';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{$('#rbA').style.width=(tA/max*100)+'%';$('#rbB').style.width=(tB/max*100)+'%'}));
+}
+
+/* ───────── controls ───────── */
+function seg(id,fn){const el=$(id);el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;el.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));fn(b.dataset.v)})}
+seg('#segSpeed',v=>{speed=+v});
+seg('#segView',v=>{view=v;logIdx=main().events.length;$('#log').innerHTML='';const l=document.createElement('li');addLog({t:main().t,kind:'info',msg:v==='corridor'?'Showing the AMBRIDGE run.':'Showing the normal ambulance run. The AMBRIDGE run is the grey marker.'})});
+seg('#segTraffic',v=>{density=v;newSims()});
+$('#btnStart').onclick=()=>startTrip(false);
+$('#btnSkip').onclick=()=>startTrip(true);
+$('#btnPlay').onclick=()=>{paused=!paused;$('#btnPlay').textContent=paused?'Resume':'Pause'};
+$('#btnRestart').onclick=()=>{finishedAt=0;newSims()};
+$('#btnAgain').onclick=()=>{finishedAt=0;newSims()};
+$('#btnHeavy').onclick=()=>{density='heavy';document.querySelectorAll('#segTraffic button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v==='heavy'?'true':'false'));finishedAt=0;newSims()};
+$('#btnNet').onclick=()=>{
+  netOff=!netOff;SA.offline=netOff;SB.offline=netOff;
+  $('#btnNet').textContent=netOff?'Restore internet':'Lose internet';$('#btnNet').classList.toggle('on',netOff);
+  SA.ev(netOff?'stop':'go',netOff?'Phone went offline. The driver app follows the saved route.':'Connection restored. Corridor resumes.');
+};
+$('#btnOff').onclick=()=>{if(phase==='idle')return;SA.reroute();SA.rerouteUntil=SA.t+3.2;main().rerouteUntil=SA.t+3.2};
+let audio=null,sirenOn=false;
+$('#btnSnd').onclick=()=>{
+  sirenOn=!sirenOn;$('#btnSnd').textContent='Siren sound: '+(sirenOn?'on':'off');$('#btnSnd').setAttribute('aria-pressed',sirenOn);
+  try{
+    if(sirenOn&&!audio){const AC=window.AudioContext||window.webkitAudioContext;const c=new AC(),o=c.createOscillator(),gn=c.createGain();o.type='triangle';gn.gain.value=0;o.connect(gn);gn.connect(c.destination);o.start();audio={c,o,gn}}
+    if(audio){audio.c.resume();audio.gn.gain.value=sirenOn?.025:0}
+  }catch(e){}
+};
+$('#langs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;LANGK=b.dataset.l;if(LANGK!=='en')langUsed=true;document.querySelectorAll('#langs button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));lastSig='';spoken={}});
+$('#btnVox').onclick=()=>{VOX=!VOX;$('#btnVox').setAttribute('aria-pressed',VOX);if(!VOX&&'speechSynthesis' in window)try{window.speechSynthesis.cancel()}catch(e){}};
+$('#btnHelp').onclick=()=>{const m=main();addLog({t:m.t,kind:'stop',msg:'Help button pressed. Control room number shown to the driver for confirmation.'})};
+
+/* ───────── main loop ───────── */
+let last=0,acc=0,sirenT=0;
+function frame(ts){
+  const dtReal=Math.min(.1,(ts-last)/1000||0);last=ts;
+  if(!paused){
+    const sp=phase==='intro'&&!SA.amb.started?1:speed;
+    acc+=dtReal*sp;let n=0;
+    while(acc>=DT&&n<10){SA.step(DT);SB.step(DT);acc-=DT;n++}
+    if(n>=10)acc=0;
+    if(phase==='intro'&&SA.amb.started)phase='run';
+    if(phase==='intro')renderDispatch();
+    if(phase==='run'&&!SA.amb.started)phase='intro';
+  }
+  if(audio&&sirenOn){sirenT+=dtReal;audio.o.frequency.value=720+360*(.5+.5*Math.sin(sirenT*2.2))}
+  drawWorld(main(),phase==='idle'?null:ghost(),ts/1000);
+  if(ts-lastUI>90){lastUI=ts;updateUI();director()}
+  requestAnimationFrame(frame);
+}
+function init(){
+  buildLadder();buildTwin();STATIC=buildStatic();fit();newSims();
+  window.addEventListener('resize',fit);
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{STATIC=buildStatic()});
+  requestAnimationFrame(frame);
+}
+
+
+function rectsOverlap(A,B){
+  const ax=[[Math.cos(A.th),Math.sin(A.th)],[-Math.sin(A.th),Math.cos(A.th)]],bx=[[Math.cos(B.th),Math.sin(B.th)],[-Math.sin(B.th),Math.cos(B.th)]];
+  const corners=(R)=>{const c=Math.cos(R.th),s=Math.sin(R.th),h=[[R.l/2,R.w/2],[R.l/2,-R.w/2],[-R.l/2,R.w/2],[-R.l/2,-R.w/2]];return h.map(q=>[R.x+q[0]*c-q[1]*s,R.y+q[0]*s+q[1]*c])};
+  const ca=corners(A),cb=corners(B);let minPen=1e9;
+  for(const ax_ of ax.concat(bx)){
+    const pa=ca.map(p=>p[0]*ax_[0]+p[1]*ax_[1]),pb=cb.map(p=>p[0]*ax_[0]+p[1]*ax_[1]);
+    const o=Math.min(Math.max(...pa),Math.max(...pb))-Math.max(Math.min(...pa),Math.min(...pb));
+    if(o<=0)return 0;minPen=Math.min(minPen,o);
+  }
+  return minPen;
+}
+function ambOverlaps(S){
+  const a=S.amb;if(!a||!a.started||a.done)return 0;
+  const q=poseAt(a.s),A={x:q.x+Math.sin(q.th)*a.lat,y:q.y-Math.cos(q.th)*a.lat,th:q.th,l:44*.92,w:19*.9};
+  let worst=0;
+  for(const L of S.lanes)for(const c of L.cars){
+    if(c.amb)continue;
+    const pt=lanePoint(L,c.p-c.len/2),th=L.th;
+    const B={x:pt.x+Math.sin(th)*c.lat,y:pt.y-Math.cos(th)*c.lat,th,l:c.len*.92,w:c.w*.9};
+    if(Math.hypot(A.x-B.x,A.y-B.y)>70)continue;
+    worst=Math.max(worst,rectsOverlap(A,B));
+  }
+  return worst;
+}
+function sweep(dens){
+  const out={};
+  for(const sys of [true,false]){
+    const S=new Sim(sys,dens,7);S.tArm=S.t+T_ARM;S.tLaunch=S.t+T_LAUNCH;
+    let worst=0,frames=0,when=0,n=0;
+    while(!(S.amb.done)&&n<60*140){S.step(DT);n++;const w=chk(S);if(w>0){frames++;if(w>worst){worst=w;when=S.amb.s;out[(sys?'c':'s')+'info']=chk.info}}}
+    if(!S.amb.done)out[(sys?'c':'s')+'dbg']={s:Math.round(S.amb.s),v:Math.round(S.amb.v),lane:S.amb.lane,st:RJ.map(r=>S.J[r.c][r.r].status+':'+S.J[r.c][r.r].phase),sStop:RJ.map(r=>Math.round(r.sStop)),p:Math.round(S.amb.car.p),ahead:S.laneMap[S.amb.lane].cars.filter(c=>c!==S.amb.car&&c.p>S.amb.car.p-70).slice(-3).map(c=>({p:Math.round(c.p),v:Math.round(c.v),lat:Math.round(c.lat),y:c.yield,box:inBox(c),len:c.len,t:c.type}))};
+    out[sys?'corridor':'siren']={stops:S.amb.stops,wait:+S.amb.waitT.toFixed(1),worst:+worst.toFixed(1),frames,at:Math.round(when),secs:+(n/60).toFixed(1),done:S.amb.done};
+  }
+  return out;
+}
+/* ───────── recording: camera, scaling, director ───────── */
+let VIS={x0:0,y0:0,x1:1600,y1:900};
+let camZ=1,CS=1,COX=0,COY=0,camAX=800,camAY=450,camLast=0;
+function camUpdate(m,time){
+  const dt=Math.min(.1,Math.max(0,time-camLast));camLast=time;
+  const a=m.amb,follow=CAM_ZOOM>1&&phase==='run'&&a.started&&!a.done;
+  camZ+=((follow?CAM_ZOOM:1)-camZ)*(1-Math.exp(-dt*1.4));
+  const q=poseAt(a.s);
+  camAX+=(q.x-camAX)*(1-Math.exp(-dt*3));camAY+=(q.y-camAY)*(1-Math.exp(-dt*3));
+  const w=CAM_ZOOM>1?clamp((camZ-1)/(CAM_ZOOM-1),0,1):0;
+  const cx0=(VW/2-OX)/SC,cy0=(VH/2-OY)/SC,cx=cx0+(camAX-cx0)*w,cy=cy0+(camAY-cy0)*w;
+  CS=SC*camZ;COX=VW/2-cx*CS;COY=VH/2-cy*CS;
+  COX=WW*CS>=VW?clamp(COX,VW-WW*CS,0):(VW-WW*CS)/2;
+  COY=WH*CS>=VH?clamp(COY,VH-WH*CS,0):(VH-WH*CS)/2;
+  VIS={x0:-COX/CS,y0:-COY/CS,x1:(VW-COX)/CS,y1:(VH-COY)/CS};
+}
+function fit(){
+  K=Math.min(innerWidth/1920,innerHeight/1080);
+  $('#frame').style.transform='translate('+((innerWidth-1920*K)/2)+'px,'+((innerHeight-1080*K)/2)+'px) scale('+K+')';
+  resize();STATIC=buildStatic();
+}
+let DS='ready',DT0=0,curCap='',langStage=0,loopOn=QS.get('loop')==='1',endPct='';
+if(['light','moderate'].includes(QS.get('traffic')))density=QS.get('traffic');
+$('#endCredit').textContent=CREDIT;
+function setCap(t){
+  if(t===curCap)return;curCap=t;
+  const el=$('#capT');el.classList.remove('in');void el.offsetWidth;el.textContent=t;if(t)el.classList.add('in');
+}
+function setLang(l){const b=document.querySelector('#langs button[data-l="'+l+'"]');if(b)b.click()}
+function hideOv(id){const el=$(id);el.classList.add('fade');setTimeout(()=>{el.hidden=true;el.classList.remove('fade')},650)}
+function takeStart(){
+  if(DS!=='ready')return;
+  DS='title';DT0=performance.now();
+  hideOv('#takeCard');$('#titleCard').hidden=false;
+}
+function resetTake(autoStart){
+  finishedAt=0;speed=1;setLang('en');newSims();
+  curCap='';setCap('');langStage=0;
+  ['#titleCard','#endCard'].forEach(i=>{$(i).hidden=true;$(i).classList.remove('fade')});
+  camZ=1;DS='ready';
+  if(autoStart){$('#takeCard').hidden=true;takeStart()}else{$('#takeCard').hidden=false}
+}
+const INTRO=[[.2,'An emergency call comes in: a patient with chest pain.'],[3.3,'AI triage confirms code red and compares nearby hospitals.'],[5.7,'The best hospital is chosen and the route is calculated.'],[8.3,'Signals stay normal. Each one changes only as the ambulance comes close.']];
+function director(){
+  const now=performance.now();
+  if(DS==='title'&&now-DT0>3400){hideOv('#titleCard');DS='run';langUsed=true;startTrip(false);langUsed=true}
+  else if(DS==='run'){
+    if(resultShown){
+      DS='result';DT0=now;speed=1;
+      const tA=SA.amb.tDone*TS,tB=SB.amb.tDone*TS,pct=Math.round((tB-tA)/tB*100);
+      endPct=pct>0?pct+'% less time':'';
+      setCap(pct>0?'AMBRIDGE: '+fmt(tA)+'. Normal ambulance: '+fmt(tB)+'. '+pct+'% less time in the same traffic.':'Same traffic, same start.');
+      return;
+    }
+    if(phase==='intro'){
+      const rel=SA.t-tZero;let c='';for(const [t,x] of INTRO)if(rel>=t)c=x;setCap(c);
+    }else if(phase==='run'){
+      const a=SA.amb,f=a.s/SEND;
+      if(a.done){
+        setCap((a.stops===0?'Arrived without a single stop':'Arrived after '+a.stops+(a.stops===1?' stop':' stops'))+' in '+fmt(a.tDone*TS)+'. A normal ambulance needs '+fmt(SB.amb.tDone*TS)+'.');if(false){}
+        else speed=1;
+      }else{
+        let c='AMBRIDGE runs the corridor. The race card shows the same trip as a normal ambulance would drive it.';
+        if(f>.08)c='Signals turn green just in time, and cars pull aside as the orange lane opens.';
+        if(f>.2)c='The driver sees one big arrow and a plain colour banner. Marathi and Hindi are one tap away.';
+        if(f>.45)c='Right turns stay safe because oncoming traffic is held.';
+        if(f>.62)c='After the ambulance passes, each junction returns to its normal cycle.';
+        setCap(c);
+      }
+    }
+  }
+  else if(DS==='result'&&now-DT0>7000){
+    $('#endLine').innerHTML=endPct?'Six signals. One ambulance. <em>'+endPct+'.</em>':'Six signals. One ambulance. <em>Seconds saved.</em>';
+    $('#endCard').hidden=false;DS='end';DT0=now;
+  }
+  else if(DS==='end'&&loopOn&&now-DT0>6000)resetTake(true);
+}
+document.addEventListener('keydown',e=>{
+  if(e.code==='Enter'||e.code==='Space'){e.preventDefault();if(DS==='ready')takeStart()}
+  else if(e.code==='KeyF'){if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen()}
+  else if(e.code==='KeyR')resetTake(false);
+  else if(e.code==='KeyL')loopOn=!loopOn;
+});
+if(QS.get('auto')==='1')setTimeout(()=>{if(DS==='ready'){$('#takeCard').hidden=true;takeStart()}},1200);
+
+function obb(x,y,th,l,w){const c=Math.cos(th),s=Math.sin(th);return{x,y,ax:[[c,s],[-s,c]],h:[l/2,w/2]}}
+function sat(A,B){
+  const dx=B.x-A.x,dy=B.y-A.y;let pen=1e9;
+  for(const ax of A.ax.concat(B.ax)){
+    const ra=A.h[0]*Math.abs(A.ax[0][0]*ax[0]+A.ax[0][1]*ax[1])+A.h[1]*Math.abs(A.ax[1][0]*ax[0]+A.ax[1][1]*ax[1]);
+    const rb=B.h[0]*Math.abs(B.ax[0][0]*ax[0]+B.ax[0][1]*ax[1])+B.h[1]*Math.abs(B.ax[1][0]*ax[0]+B.ax[1][1]*ax[1]);
+    const o=ra+rb-Math.abs(dx*ax[0]+dy*ax[1]);if(o<=0)return 0;pen=Math.min(pen,o)}
+  return pen;
+}
+function chk(sim){
+  const a=sim.amb;if(!a||!a.started||a.done)return 0;
+  const q=poseAt(Math.max(0,a.s-22)),A=obb(q.x+Math.sin(q.th)*a.lat,q.y-Math.cos(q.th)*a.lat,q.th,44,19);let worst=0;
+  for(const L of sim.lanes)for(const c of L.cars){if(c.amb)continue;
+    const D=LANE[c.lane],pt=lanePoint(D,c.p-c.len/2),th=D.th,B=obb(pt.x+Math.sin(th)*c.lat,pt.y-Math.cos(th)*c.lat,th,c.len,c.w);
+    const pn=sat(A,B);if(pn>worst){worst=pn;chk.info={lane:c.lane,p:Math.round(c.p),lat:Math.round(c.lat),len:c.len,w:c.w,v:Math.round(c.v),yield:c.yield,type:c.type,aLat:Math.round(a.lat),aLane:a.lane,aV:Math.round(a.v),as:Math.round(a.s)}}}
+  return worst;
+}
+
+function dbg(dens,secs){
+  const S=new Sim(true,dens,7);S.tArm=S.t+T_ARM;S.tLaunch=S.t+T_LAUNCH;
+  for(let n=0;n<60*secs;n++)S.step(DT);
+  const a=S.amb,q=poseAt(a.s);
+  const near=[];for(const L of S.lanes)for(const c of L.cars){if(c.amb)continue;const D=LANE[c.lane],pt=lanePoint(D,c.p-c.len/2);if(Math.hypot(pt.x-q.x,pt.y-q.y)<90)near.push({lane:c.lane,x:Math.round(pt.x),y:Math.round(pt.y),v:Math.round(c.v),lat:Math.round(c.lat),y_:c.yield,type:c.type})}
+  return {s:Math.round(a.s),v:Math.round(a.v),x:Math.round(q.x),y:Math.round(q.y),lane:a.lane,near,rj:RJ.map(r=>({n:r.name,sStop:Math.round(r.sStop),st:S.J[r.c][r.r].status,ph:S.J[r.c][r.r].phase,sig:sigState(S.J[r.c][r.r],r.axis,'amb')}))};
+}
+
+window.__demo={chk,get SA(){return SA},get SB(){return SB},start:startTrip,get phase(){return phase},setSpeed:v=>{speed=v},get DS(){return DS},sweep,dbg,takeStart,resetTake};
+init();
+})();
+</script>
+
+</body></html>
